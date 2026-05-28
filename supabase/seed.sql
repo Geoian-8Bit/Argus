@@ -1,0 +1,5 @@
+-- Seed opcional para desarrollo local. Vacío por defecto.
+-- Ejemplo:
+-- insert into public.products (code, name, variant, stock) values
+--   ('ALM-A-60', 'Almohada tipo A 60cm', 'A', 0),
+--   ('ALM-B-60', 'Almohada tipo B 60cm', 'B', 0);

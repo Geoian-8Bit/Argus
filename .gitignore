@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+dev-dist/
+*.local
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+.vitest/
+.nyc_output/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+.supabase/
+
+# OS
+Thumbs.db
