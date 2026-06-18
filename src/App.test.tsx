@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './theme/ThemeProvider';
 import App from './App';
 
 vi.mock('@/lib/supabase', () => ({
@@ -24,13 +23,11 @@ vi.mock('@/lib/supabase', () => ({
 function renderApp(initialPath: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ThemeProvider>
-      <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={[initialPath]}>
-          <App />
-        </MemoryRouter>
-      </QueryClientProvider>
-    </ThemeProvider>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
