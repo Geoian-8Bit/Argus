@@ -13,15 +13,22 @@ export function ProductNewPage() {
   const [name, setName] = useState('');
   const [variant, setVariant] = useState('');
   const [notes, setNotes] = useState('');
-  const [initialStock, setInitialStock] = useState<number>(0);
+  const [initialStock, setInitialStock] = useState<string>('0');
   const [created, setCreated] = useState<Product | null>(null);
 
   const createProduct = useCreateProduct();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const stockNum = Math.max(0, Math.trunc(Number(initialStock)) || 0);
     try {
-      const product = await createProduct.mutateAsync({ code, name, variant, notes, initialStock });
+      const product = await createProduct.mutateAsync({
+        code,
+        name,
+        variant,
+        notes,
+        initialStock: stockNum,
+      });
       setCreated(product);
     } catch {
       // El error queda expuesto via createProduct.error
@@ -34,7 +41,7 @@ export function ProductNewPage() {
     setName('');
     setVariant('');
     setNotes('');
-    setInitialStock(0);
+    setInitialStock('0');
     createProduct.reset();
   }
 
@@ -110,7 +117,7 @@ export function ProductNewPage() {
             min={0}
             inputMode="numeric"
             value={initialStock}
-            onChange={(e) => setInitialStock(Math.max(0, Number(e.target.value) || 0))}
+            onChange={(e) => setInitialStock(e.target.value)}
             disabled={createProduct.isPending}
           />
         </Field>

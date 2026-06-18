@@ -35,7 +35,7 @@ export function ScanPage() {
   const action: Action | null = rawAction === 'in' || rawAction === 'out' ? rawAction : null;
 
   const [scannedCode, setScannedCode] = useState<string | null>(null);
-  const [qty, setQty] = useState<number>(1);
+  const [qty, setQty] = useState<string>('1');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const productQuery = useProductByCode(scannedCode);
@@ -43,13 +43,13 @@ export function ScanPage() {
 
   const handleDecoded = useCallback((text: string) => {
     setScannedCode((prev) => (prev === text ? prev : text));
-    setQty(1);
+    setQty('1');
     setSuccessMessage(null);
   }, []);
 
   const resetScan = useCallback(() => {
     setScannedCode(null);
-    setQty(1);
+    setQty('1');
     registerMovement.reset();
   }, [registerMovement]);
 
@@ -60,21 +60,23 @@ export function ScanPage() {
   const labels = ACTION[action];
   const product = productQuery.data ?? null;
   const showScanner = scannedCode === null;
+  const qtyNum = Math.trunc(Number(qty));
+  const qtyValid = Number.isFinite(qtyNum) && qtyNum >= 1;
 
   async function handleConfirm() {
-    if (!product || !action) return;
+    if (!product || !action || !qtyValid) return;
     try {
       await registerMovement.mutateAsync({
         productId: product.id,
         productCode: product.code,
         type: action,
-        qty,
+        qty: qtyNum,
       });
       setSuccessMessage(
-        `${action === 'in' ? '+' : '−'}${qty} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`,
+        `${action === 'in' ? '+' : '−'}${qtyNum} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`,
       );
       setScannedCode(null);
-      setQty(1);
+      setQty('1');
     } catch {
       // El error se muestra vía registerMovement.error
     }
@@ -127,7 +129,7 @@ export function ScanPage() {
               min={1}
               inputMode="numeric"
               value={qty}
-              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+              onChange={(e) => setQty(e.target.value)}
             />
           </Field>
 
@@ -145,6 +147,7 @@ export function ScanPage() {
               variant={labels.variant}
               onClick={handleConfirm}
               loading={registerMovement.isPending}
+              disabled={!qtyValid}
             >
               {!registerMovement.isPending && (
                 <labels.Icon className="h-4 w-4" aria-hidden="true" />
