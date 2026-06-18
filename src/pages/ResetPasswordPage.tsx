@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/useAuth';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { Field, Input, Button, Spinner } from '@/components/ui';
 
 export function ResetPasswordPage() {
   const { session, loading, updatePassword } = useAuth();
@@ -12,8 +14,8 @@ export function ResetPasswordPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
-        Cargando…
+      <div className="flex min-h-dvh items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Spinner /> Cargando…
       </div>
     );
   }
@@ -22,22 +24,19 @@ export function ResetPasswordPage() {
   // el enlace es inválido o ha caducado.
   if (!session) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm space-y-4 text-center">
-          <h1 className="text-2xl font-semibold">Enlace no válido</h1>
-          <p className="text-sm text-muted-foreground">
-            El enlace para restablecer la contraseña no es válido o ha caducado.
-          </p>
-          <p className="text-sm">
-            <Link
-              to="/forgot-password"
-              className="font-medium text-foreground underline-offset-2 hover:underline"
-            >
-              Solicitar uno nuevo
-            </Link>
-          </p>
-        </div>
-      </div>
+      <AuthLayout
+        title="Enlace no válido"
+        subtitle="El enlace para restablecer la contraseña no es válido o ha caducado."
+      >
+        <p className="text-center text-sm">
+          <Link
+            to="/forgot-password"
+            className="font-medium text-foreground underline-offset-2 hover:underline"
+          >
+            Solicitar uno nuevo
+          </Link>
+        </p>
+      </AuthLayout>
     );
   }
 
@@ -65,55 +64,41 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Nueva contraseña</h1>
-          <p className="text-sm text-muted-foreground">
-            Elige una contraseña nueva para tu cuenta.
+    <AuthLayout title="Nueva contraseña" subtitle="Elige una contraseña nueva para tu cuenta.">
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Field label="Nueva contraseña" hint="Mínimo 6 caracteres">
+          <Input
+            type="password"
+            required
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            disabled={submitting}
+          />
+        </Field>
+        <Field label="Repite la contraseña">
+          <Input
+            type="password"
+            required
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="••••••••"
+            disabled={submitting}
+          />
+        </Field>
+
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
           </p>
-        </header>
+        )}
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Nueva contraseña</span>
-            <input
-              type="password"
-              required
-              autoComplete="new-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo 6 caracteres"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-              disabled={submitting}
-            />
-          </label>
-
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Repite la contraseña</span>
-            <input
-              type="password"
-              required
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(event) => setConfirm(event.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-              disabled={submitting}
-            />
-          </label>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting || password.length === 0}
-            className="w-full rounded-md bg-primary py-2 text-primary-foreground disabled:opacity-50"
-          >
-            {submitting ? 'Guardando…' : 'Guardar contraseña'}
-          </button>
-        </form>
-      </div>
-    </div>
+        <Button type="submit" loading={submitting}>
+          Guardar contraseña
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

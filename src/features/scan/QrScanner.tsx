@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { CameraOff } from 'lucide-react';
+import { Spinner } from '@/components/ui';
 
 interface QrScannerProps {
   onDecoded: (text: string) => void;
@@ -88,15 +90,38 @@ export function QrScanner({ onDecoded, paused = false }: QrScannerProps) {
   }, [containerId, onDecoded, paused]);
 
   return (
-    <div className="space-y-2">
-      <div
-        id={containerId}
-        className="aspect-square w-full overflow-hidden rounded-lg border border-border bg-black"
-      />
-      {starting && !error && (
-        <p className="text-center text-sm text-muted-foreground">Iniciando cámara…</p>
+    <div className="space-y-3">
+      <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border bg-black">
+        <div
+          id={containerId}
+          className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+        />
+
+        {!error && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="relative h-3/5 w-3/5">
+              <span className="absolute left-0 top-0 h-7 w-7 rounded-tl-lg border-l-2 border-t-2 border-white/90" />
+              <span className="absolute right-0 top-0 h-7 w-7 rounded-tr-lg border-r-2 border-t-2 border-white/90" />
+              <span className="absolute bottom-0 left-0 h-7 w-7 rounded-bl-lg border-b-2 border-l-2 border-white/90" />
+              <span className="absolute bottom-0 right-0 h-7 w-7 rounded-br-lg border-b-2 border-r-2 border-white/90" />
+            </div>
+          </div>
+        )}
+
+        {starting && !error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white">
+            <Spinner className="h-5 w-5" label="Iniciando cámara" />
+            <p className="text-sm">Iniciando cámara…</p>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <CameraOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
       )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

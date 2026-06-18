@@ -3,49 +3,121 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+  /* ── Tema: Almacén claro (por defecto) ───────────────────────────────── */
+  :root,
+  [data-theme='claro'] {
+    --background: 220 20% 99%;
+    --foreground: 222 25% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 222 25% 12%;
+    --primary: 243 75% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 222 25% 18%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 10% 40%;
+    --accent: 220 16% 94%;
+    --accent-foreground: 222 25% 18%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --ok: 142 55% 33%;
+    --ok-foreground: 0 0% 100%;
+    --warning: 38 92% 46%;
+    --warning-foreground: 30 60% 12%;
+    --brand: 243 75% 56%;
+    --border: 220 16% 88%;
+    --input: 220 16% 85%;
+    --ring: 243 75% 56%;
     --radius: 0.5rem;
+
+    --font-sans:
+      'Inter Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+      Roboto, sans-serif;
+    --font-display: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --shadow-sm: 0 1px 2px 0 hsl(222 25% 12% / 0.05);
+    --shadow-md: 0 4px 12px -2px hsl(222 25% 12% / 0.08), 0 2px 4px -2px hsl(222 25% 12% / 0.06);
+    --shadow-lg: 0 12px 32px -8px hsl(222 25% 12% / 0.12);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+  /* ── Tema: Sala de control (oscuro) ──────────────────────────────────── */
+  [data-theme='control'] {
+    --background: 222 30% 7%;
+    --foreground: 210 20% 92%;
+    --card: 222 26% 11%;
+    --card-foreground: 210 20% 92%;
+    --popover: 222 26% 13%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 38 95% 55%;
+    --primary-foreground: 222 45% 8%;
+    --secondary: 222 20% 18%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 222 20% 16%;
+    --muted-foreground: 215 16% 66%;
+    --accent: 222 20% 20%;
+    --accent-foreground: 210 20% 95%;
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --ok: 95 55% 50%;
+    --ok-foreground: 222 45% 8%;
+    --warning: 40 95% 55%;
+    --warning-foreground: 222 45% 10%;
+    --brand: 38 95% 55%;
+    --border: 222 18% 22%;
+    --input: 222 18% 24%;
+    --ring: 38 95% 55%;
+    --radius: 0.625rem;
+
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --shadow-sm: 0 0 0 1px hsl(222 18% 24% / 0.5);
+    --shadow-md: 0 8px 24px -8px hsl(222 60% 2% / 0.7);
+    --shadow-lg: 0 16px 40px -12px hsl(222 60% 2% / 0.8);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ── Tema: Suave / cercano ───────────────────────────────────────────── */
+  [data-theme='suave'] {
+    --background: 40 30% 97%;
+    --foreground: 25 25% 18%;
+    --card: 40 40% 99%;
+    --card-foreground: 25 25% 18%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 25 25% 18%;
+    --primary: 152 48% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 30% 91%;
+    --secondary-foreground: 25 25% 22%;
+    --muted: 40 24% 93%;
+    --muted-foreground: 30 12% 40%;
+    --accent: 40 30% 90%;
+    --accent-foreground: 25 25% 22%;
+    --destructive: 8 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --ok: 152 48% 34%;
+    --ok-foreground: 0 0% 100%;
+    --warning: 32 85% 42%;
+    --warning-foreground: 0 0% 100%;
+    --brand: 152 48% 36%;
+    --border: 40 22% 85%;
+    --input: 40 22% 82%;
+    --ring: 152 48% 36%;
+    --radius: 1rem;
+
+    --font-sans: 'Nunito Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Nunito Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --shadow-sm: 0 2px 8px -2px hsl(25 25% 18% / 0.1);
+    --shadow-md: 0 6px 20px -6px hsl(25 25% 18% / 0.14);
+    --shadow-lg: 0 16px 36px -10px hsl(25 25% 18% / 0.18);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   * {
@@ -54,14 +126,29 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family:
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      Roboto,
-      sans-serif;
+    font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* Respeta el área segura del dispositivo (notch, barra de gestos). */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Accesibilidad: respeta la preferencia de movimiento reducido. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

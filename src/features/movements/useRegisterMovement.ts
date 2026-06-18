@@ -49,6 +49,7 @@ export function useRegisterMovement() {
       void queryClient.invalidateQueries({ queryKey: productByCodeKey(input.productCode) });
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       void queryClient.invalidateQueries({ queryKey: ['movements'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

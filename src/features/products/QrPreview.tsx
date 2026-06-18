@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Download, FileCode2, Printer } from 'lucide-react';
 import { generateQrDataUrl, generateQrSvg } from '@/lib/qr';
+import { Card, Button, Skeleton } from '@/components/ui';
 
 interface QrPreviewProps {
   value: string;
@@ -66,7 +68,7 @@ export function QrPreview({ value, label }: QrPreviewProps) {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-4 text-center">
+    <Card className="space-y-3 p-4 text-center">
       <div className="flex justify-center print:py-6">
         {dataUrl ? (
           <img
@@ -74,38 +76,28 @@ export function QrPreview({ value, label }: QrPreviewProps) {
             alt={label ? `QR de ${label}` : `QR ${value}`}
             width={256}
             height={256}
-            className="h-64 w-64"
+            className="h-56 w-56 rounded-md bg-white p-2"
           />
         ) : (
-          <div className="h-64 w-64 animate-pulse bg-muted" />
+          <Skeleton className="h-56 w-56" />
         )}
       </div>
-      <p className="font-mono text-sm">{value}</p>
+      <p className="font-mono text-sm font-medium">{value}</p>
       {label && <p className="text-sm text-muted-foreground">{label}</p>}
       <div className="grid grid-cols-3 gap-2 print:hidden">
-        <button
-          type="button"
-          onClick={handleDownloadPng}
-          disabled={!dataUrl}
-          className="rounded-md border border-input py-2 text-sm disabled:opacity-50"
-        >
+        <Button variant="outline" size="sm" onClick={handleDownloadPng} disabled={!dataUrl}>
+          <Download className="h-4 w-4" aria-hidden="true" />
           PNG
-        </button>
-        <button
-          type="button"
-          onClick={handleDownloadSvg}
-          className="rounded-md border border-input py-2 text-sm"
-        >
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownloadSvg}>
+          <FileCode2 className="h-4 w-4" aria-hidden="true" />
           SVG
-        </button>
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="rounded-md border border-input py-2 text-sm"
-        >
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4" aria-hidden="true" />
           Imprimir
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

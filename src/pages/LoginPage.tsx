@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/useAuth';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { Field, Input, Button } from '@/components/ui';
 
 export function LoginPage() {
   const { session, loading, signIn } = useAuth();
@@ -27,73 +29,59 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Argus</h1>
-          <p className="text-sm text-muted-foreground">Accede con tu email y contraseña.</p>
-        </header>
+    <AuthLayout title="Argus" subtitle="Accede con tu email y contraseña.">
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Field label="Email">
+          <Input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@empresa.com"
+            disabled={submitting}
+          />
+        </Field>
+        <Field label="Contraseña">
+          <Input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            disabled={submitting}
+          />
+        </Field>
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Email</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="tu@empresa.com"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-              disabled={submitting}
-            />
-          </label>
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Contraseña</span>
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-              disabled={submitting}
-            />
-          </label>
+        <Button type="submit" loading={submitting}>
+          Entrar
+        </Button>
+      </form>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting || email.trim().length === 0 || password.length === 0}
-            className="w-full rounded-md bg-primary py-2 text-primary-foreground disabled:opacity-50"
+      <div className="space-y-2 text-center text-sm">
+        <Link
+          to="/forgot-password"
+          className="text-muted-foreground underline-offset-2 hover:underline"
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+        <p className="text-muted-foreground">
+          ¿No tienes cuenta?{' '}
+          <Link
+            to="/signup"
+            className="font-medium text-foreground underline-offset-2 hover:underline"
           >
-            {submitting ? 'Entrando…' : 'Entrar'}
-          </button>
-        </form>
-
-        <div className="space-y-2 text-center text-sm">
-          <p>
-            <Link
-              to="/forgot-password"
-              className="text-muted-foreground underline-offset-2 hover:underline"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </p>
-          <p className="text-muted-foreground">
-            ¿No tienes cuenta?{' '}
-            <Link
-              to="/signup"
-              className="font-medium text-foreground underline-offset-2 hover:underline"
-            >
-              Crear cuenta
-            </Link>
-          </p>
-        </div>
+            Crear cuenta
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

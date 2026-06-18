@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
+import { Wordmark } from '@/components/brand/Wordmark';
+import { IconButton } from '@/components/ui';
+import { ThemeSwitcher } from '@/theme/ThemeSwitcher';
 import { BottomNav } from './BottomNav';
 
 interface AppShellProps {
@@ -11,19 +15,24 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">Argus</h1>
-        {user && (
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-          >
-            Cerrar sesión
-          </button>
-        )}
+      <header className="sticky top-0 z-20 border-b border-border bg-background">
+        <div className="mx-auto flex h-14 max-w-lg items-center justify-between gap-2 px-4">
+          <Wordmark />
+          <div className="flex items-center gap-1">
+            <ThemeSwitcher />
+            {user && (
+              <IconButton aria-label="Cerrar sesión" onClick={() => void signOut()}>
+                <LogOut className="h-5 w-5" aria-hidden="true" />
+              </IconButton>
+            )}
+          </div>
+        </div>
       </header>
-      <main className="flex-1 overflow-y-auto px-4 pb-20 pt-4">{children}</main>
+
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
+        {children}
+      </main>
+
       <BottomNav />
     </div>
   );

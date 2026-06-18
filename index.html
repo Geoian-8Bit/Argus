@@ -4,8 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#fbfcfe" />
     <title>Argus</title>
+    <script>
+      // Aplica el tema guardado antes de pintar para evitar parpadeo (FOUC).
+      (function () {
+        try {
+          var valid = ['claro', 'control', 'suave'];
+          var t = localStorage.getItem('argus-theme');
+          if (valid.indexOf(t) === -1) t = 'claro';
+          var el = document.documentElement;
+          el.setAttribute('data-theme', t);
+          if (t === 'control') el.classList.add('dark');
+          var colors = { claro: '#fbfcfe', control: '#0c1019', suave: '#f8f4ec' };
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', colors[t]);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

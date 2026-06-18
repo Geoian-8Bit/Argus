@@ -1,30 +1,29 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-
-const links = [
-  { to: '/', label: 'Inicio' },
-  { to: '/scan', label: 'Escanear' },
-  { to: '/products', label: 'Productos' },
-  { to: '/history', label: 'Historial' },
-] as const;
+import { NAV_ITEMS } from './navItems';
 
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-background">
-      <ul className="mx-auto flex max-w-md items-center justify-around">
-        {links.map((link) => (
-          <li key={link.to} className="flex-1">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around">
+        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          <li key={to} className="flex-1">
             <NavLink
-              to={link.to}
-              end={link.to === '/'}
+              to={to}
+              end={end}
               className={({ isActive }) =>
                 cn(
-                  'block py-3 text-center text-sm transition-colors',
-                  isActive ? 'font-medium text-primary' : 'text-muted-foreground',
+                  'flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                  isActive ? 'text-brand' : 'text-muted-foreground hover:text-foreground',
                 )
               }
             >
-              {link.label}
+              {({ isActive }) => (
+                <>
+                  <Icon className="h-5 w-5" strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
+                  <span>{label}</span>
+                </>
+              )}
             </NavLink>
           </li>
         ))}

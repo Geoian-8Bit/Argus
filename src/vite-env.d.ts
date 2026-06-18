@@ -9,3 +9,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Importaciones de CSS de @fontsource (efecto secundario, sin tipos propios).
+declare module '@fontsource-variable/*';
+declare module '@fontsource/*';

@@ -1,19 +1,33 @@
 import { useCallback, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle2,
+  PackageX,
+  RefreshCw,
+  Plus,
+} from 'lucide-react';
 import { QrScanner } from '@/features/scan/QrScanner';
 import { useProductByCode } from '@/features/scan/useProductByCode';
 import { useRegisterMovement } from '@/features/movements/useRegisterMovement';
+import {
+  PageHeader,
+  Card,
+  Button,
+  ButtonLink,
+  Field,
+  Input,
+  StockBadge,
+  Spinner,
+} from '@/components/ui';
 
 type Action = 'in' | 'out';
 
-const ACTION_LABELS: Record<Action, { verb: string; cta: string; tone: string }> = {
-  in: { verb: 'Añadir', cta: 'Añadir al stock', tone: 'bg-primary text-primary-foreground' },
-  out: {
-    verb: 'Retirar',
-    cta: 'Retirar del stock',
-    tone: 'bg-destructive text-destructive-foreground',
-  },
-};
+const ACTION = {
+  in: { verb: 'Añadir', cta: 'Añadir al stock', variant: 'primary', Icon: ArrowDownToLine },
+  out: { verb: 'Retirar', cta: 'Retirar del stock', variant: 'destructive', Icon: ArrowUpFromLine },
+} as const;
 
 export function ScanPage() {
   const [searchParams] = useSearchParams();
@@ -43,7 +57,7 @@ export function ScanPage() {
     return <Navigate to="/" replace />;
   }
 
-  const labels = ACTION_LABELS[action];
+  const labels = ACTION[action];
   const product = productQuery.data ?? null;
   const showScanner = scannedCode === null;
 
@@ -57,107 +71,112 @@ export function ScanPage() {
         qty,
       });
       setSuccessMessage(
-        `${action === 'in' ? '+' : '−'}${qty} en ${product.name}${product.variant ? ` (${product.variant})` : ''}`,
+        `${action === 'in' ? '+' : '−'}${qty} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`,
       );
       setScannedCode(null);
       setQty(1);
     } catch {
-      // Error expuesto via registerMovement.error
+      // El error se muestra vía registerMovement.error
     }
   }
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">{labels.verb}</h2>
-          <p className="text-sm text-muted-foreground">Apunta la cámara al QR del producto.</p>
-        </div>
-        <Link to="/" className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-          Cambiar acción
-        </Link>
-      </header>
+    <div className="space-y-4">
+      <PageHeader
+        title={labels.verb}
+        subtitle="Apunta la cámara al QR del producto."
+        action={
+          <Link
+            to="/"
+            className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Cambiar acción
+          </Link>
+        }
+      />
 
       {successMessage && (
-        <p className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-          {successMessage}
-        </p>
+        <div className="flex items-center gap-2 rounded-md border border-ok/40 bg-ok/10 px-3 py-2.5 text-sm font-medium text-ok">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>Movimiento registrado: {successMessage}</span>
+        </div>
       )}
 
       {showScanner ? (
         <QrScanner onDecoded={handleDecoded} />
       ) : productQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Buscando producto…</p>
+        <Card className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+          <Spinner /> Buscando producto…
+        </Card>
       ) : product ? (
-        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-          <div>
-            <h3 className="text-base font-medium">{product.name}</h3>
-            <p className="text-xs text-muted-foreground">
-              {product.code}
-              {product.variant ? ` · ${product.variant}` : ''}
-            </p>
-            <p className="mt-1 text-sm">
-              Stock actual: <strong>{product.stock}</strong>
-            </p>
+        <Card className="space-y-4 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-display text-base font-semibold">{product.name}</h3>
+              <p className="truncate font-mono text-xs text-muted-foreground">
+                {product.code}
+                {product.variant ? ` · ${product.variant}` : ''}
+              </p>
+            </div>
+            <StockBadge stock={product.stock} />
           </div>
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Cantidad</span>
-            <input
+          <Field label="Cantidad">
+            <Input
               type="number"
               min={1}
+              inputMode="numeric"
               value={qty}
-              onChange={(event) => setQty(Math.max(1, Number(event.target.value) || 1))}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
+              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
             />
-          </label>
+          </Field>
 
           {registerMovement.isError && (
-            <p className="text-sm text-destructive">{registerMovement.error.message}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {registerMovement.error.message}
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={resetScan}
-              disabled={registerMovement.isPending}
-              className="rounded-md border border-input py-2 text-sm disabled:opacity-50"
-            >
+            <Button variant="outline" onClick={resetScan} disabled={registerMovement.isPending}>
               Cancelar
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant={labels.variant}
               onClick={handleConfirm}
-              disabled={registerMovement.isPending}
-              className={`rounded-md py-2 ${labels.tone} disabled:opacity-50`}
+              loading={registerMovement.isPending}
             >
-              {registerMovement.isPending ? 'Guardando…' : labels.cta}
-            </button>
+              {!registerMovement.isPending && (
+                <labels.Icon className="h-4 w-4" aria-hidden="true" />
+              )}
+              {labels.cta}
+            </Button>
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-          <h3 className="text-base font-medium">Código no encontrado</h3>
-          <p className="text-sm text-muted-foreground">
-            El QR <span className="font-mono">{scannedCode}</span> no está dado de alta en el
-            inventario.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={resetScan}
-              className="rounded-md border border-input py-2 text-sm"
-            >
-              Reescanear
-            </button>
-            <Link
-              to={`/products/new?code=${encodeURIComponent(scannedCode ?? '')}`}
-              className="rounded-md bg-primary py-2 text-center text-sm text-primary-foreground"
-            >
-              Dar de alta
-            </Link>
+        <Card className="space-y-4 p-4">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <PackageX className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-display text-base font-semibold">Código no encontrado</h3>
+              <p className="text-sm text-muted-foreground">
+                El QR <span className="font-mono">{scannedCode}</span> no está dado de alta.
+              </p>
+            </div>
           </div>
-        </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={resetScan}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Reescanear
+            </Button>
+            <ButtonLink to={`/products/new?code=${encodeURIComponent(scannedCode ?? '')}`}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Dar de alta
+            </ButtonLink>
+          </div>
+        </Card>
       )}
     </div>
   );

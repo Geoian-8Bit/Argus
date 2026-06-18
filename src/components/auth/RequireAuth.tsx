@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/useAuth';
+import { Spinner } from '@/components/ui';
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -12,8 +13,8 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
-        Cargando…
+      <div className="flex min-h-dvh items-center justify-center gap-2 bg-background text-sm text-muted-foreground">
+        <Spinner /> Cargando…
       </div>
     );
   }

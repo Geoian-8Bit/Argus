@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { CheckCircle2 } from 'lucide-react';
 import { useCreateProduct, type Product } from '@/features/products/useCreateProduct';
 import { QrPreview } from '@/features/products/QrPreview';
+import { PageHeader, Button, ButtonLink, Field, Input, Textarea } from '@/components/ui';
 
 export function ProductNewPage() {
   const [searchParams] = useSearchParams();
@@ -19,13 +21,7 @@ export function ProductNewPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const product = await createProduct.mutateAsync({
-        code,
-        name,
-        variant,
-        notes,
-        initialStock,
-      });
+      const product = await createProduct.mutateAsync({ code, name, variant, notes, initialStock });
       setCreated(product);
     } catch {
       // El error queda expuesto via createProduct.error
@@ -44,118 +40,99 @@ export function ProductNewPage() {
 
   if (created) {
     return (
-      <div className="mx-auto flex max-w-md flex-col gap-4">
-        <header>
-          <h2 className="text-base font-semibold">Producto creado</h2>
-          <p className="text-sm text-muted-foreground">
-            <strong>{created.name}</strong>
-            {created.variant ? ` · ${created.variant}` : ''} · stock {created.stock}
-          </p>
-        </header>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok/15 text-ok">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold tracking-tight">Producto creado</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{created.name}</strong>
+              {created.variant ? ` · ${created.variant}` : ''} · stock {created.stock}
+            </p>
+          </div>
+        </div>
 
         <QrPreview value={created.code} label={created.name} />
 
         <div className="grid grid-cols-2 gap-2 print:hidden">
-          <button
-            type="button"
-            onClick={handleNew}
-            className="rounded-md bg-primary py-2 text-primary-foreground"
-          >
-            Otro producto
-          </button>
-          <Link to="/products" className="rounded-md border border-input py-2 text-center text-sm">
+          <Button onClick={handleNew}>Otro producto</Button>
+          <ButtonLink to="/products" variant="outline">
             Ver listado
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <header className="mb-4">
-        <h2 className="text-base font-semibold">Nuevo producto</h2>
-        <p className="text-sm text-muted-foreground">
-          Crea un producto en el inventario. Al guardar se generará su QR para imprimir o descargar.
-        </p>
-      </header>
+    <div className="space-y-5">
+      <PageHeader
+        title="Nuevo producto"
+        subtitle="Al guardar se generará su QR para imprimir o descargar."
+      />
 
-      <form className="space-y-3" onSubmit={handleSubmit}>
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">
-            Código <span className="text-muted-foreground">(legible humano)</span>
-          </span>
-          <input
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Field label="Código" hint="Legible por humanos, p. ej. ALM-A-60" required>
+          <Input
             required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="ej. ALM-A-60"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="ALM-A-60"
             disabled={createProduct.isPending}
+            autoCapitalize="characters"
           />
-        </label>
+        </Field>
 
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Nombre</span>
-          <input
+        <Field label="Nombre" required>
+          <Input
             required
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(e) => setName(e.target.value)}
             placeholder="Almohada tipo A 60cm"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
             disabled={createProduct.isPending}
           />
-        </label>
+        </Field>
 
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">
-            Variante <span className="text-muted-foreground">(opcional)</span>
-          </span>
-          <input
+        <Field label="Variante" hint="Opcional">
+          <Input
             value={variant}
-            onChange={(event) => setVariant(event.target.value)}
+            onChange={(e) => setVariant(e.target.value)}
             placeholder="A / B / C…"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
             disabled={createProduct.isPending}
           />
-        </label>
+        </Field>
 
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Stock inicial</span>
-          <input
+        <Field label="Stock inicial">
+          <Input
             type="number"
             min={0}
+            inputMode="numeric"
             value={initialStock}
-            onChange={(event) => setInitialStock(Math.max(0, Number(event.target.value) || 0))}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
+            onChange={(e) => setInitialStock(Math.max(0, Number(e.target.value) || 0))}
             disabled={createProduct.isPending}
           />
-        </label>
+        </Field>
 
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">
-            Notas <span className="text-muted-foreground">(opcional)</span>
-          </span>
-          <textarea
+        <Field label="Notas" hint="Opcional">
+          <Textarea
             value={notes}
-            onChange={(event) => setNotes(event.target.value)}
+            onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
             disabled={createProduct.isPending}
           />
-        </label>
+        </Field>
 
         {createProduct.isError && (
-          <p className="text-sm text-destructive">{createProduct.error.message}</p>
+          <p className="text-sm text-destructive" role="alert">
+            {createProduct.error.message}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={createProduct.isPending}
-          className="w-full rounded-md bg-primary py-2 text-primary-foreground disabled:opacity-50"
-        >
-          {createProduct.isPending ? 'Guardando…' : 'Guardar y generar QR'}
-        </button>
+        <Button type="submit" loading={createProduct.isPending}>
+          Guardar y generar QR
+        </Button>
       </form>
     </div>
   );

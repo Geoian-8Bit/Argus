@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { MailCheck } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { Field, Input, Button, Card } from '@/components/ui';
 
 export function SignupPage() {
   const { session, loading, signUp } = useAuth();
@@ -34,8 +37,6 @@ export function SignupPage() {
       if (needsConfirmation) {
         setSent(true);
       }
-      // Si no hace falta confirmar, onAuthStateChange creará la sesión y
-      // el guard de arriba redirige a la app automáticamente.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.');
     } finally {
@@ -44,96 +45,81 @@ export function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Crear cuenta</h1>
-          <p className="text-sm text-muted-foreground">Regístrate con tu email y una contraseña.</p>
-        </header>
-
-        {sent ? (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border p-4 text-sm">
+    <AuthLayout title="Crear cuenta" subtitle="Regístrate con tu email y una contraseña.">
+      {sent ? (
+        <div className="space-y-4">
+          <Card className="flex items-start gap-3 p-4 text-sm">
+            <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-ok" aria-hidden="true" />
+            <span>
               Hemos enviado un email de confirmación a <strong>{email}</strong>. Ábrelo desde este
               dispositivo para activar tu cuenta y entrar.
-            </div>
-            <p className="text-center text-sm">
-              <Link
-                to="/login"
-                className="text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Volver a iniciar sesión
-              </Link>
-            </p>
-          </div>
-        ) : (
-          <>
-            <form className="space-y-3" onSubmit={handleSubmit}>
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Email</span>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="tu@empresa.com"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-                  disabled={submitting}
-                />
-              </label>
+            </span>
+          </Card>
+          <p className="text-center text-sm">
+            <Link to="/login" className="text-muted-foreground underline-offset-2 hover:underline">
+              Volver a iniciar sesión
+            </Link>
+          </p>
+        </div>
+      ) : (
+        <>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <Field label="Email">
+              <Input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@empresa.com"
+                disabled={submitting}
+              />
+            </Field>
+            <Field label="Contraseña" hint="Mínimo 6 caracteres">
+              <Input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={submitting}
+              />
+            </Field>
+            <Field label="Repite la contraseña">
+              <Input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+                disabled={submitting}
+              />
+            </Field>
 
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Contraseña</span>
-                <input
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-                  disabled={submitting}
-                />
-              </label>
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
 
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Repite la contraseña</span>
-                <input
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(event) => setConfirm(event.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-ring"
-                  disabled={submitting}
-                />
-              </label>
+            <Button type="submit" loading={submitting}>
+              Crear cuenta
+            </Button>
+          </form>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={submitting || email.trim().length === 0}
-                className="w-full rounded-md bg-primary py-2 text-primary-foreground disabled:opacity-50"
-              >
-                {submitting ? 'Creando…' : 'Crear cuenta'}
-              </button>
-            </form>
-
-            <p className="text-center text-sm text-muted-foreground">
-              ¿Ya tienes cuenta?{' '}
-              <Link
-                to="/login"
-                className="font-medium text-foreground underline-offset-2 hover:underline"
-              >
-                Iniciar sesión
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+          <p className="text-center text-sm text-muted-foreground">
+            ¿Ya tienes cuenta?{' '}
+            <Link
+              to="/login"
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              Iniciar sesión
+            </Link>
+          </p>
+        </>
+      )}
+    </AuthLayout>
   );
 }
