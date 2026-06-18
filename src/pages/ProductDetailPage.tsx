@@ -12,7 +12,6 @@ import {
   Field,
   Input,
   Textarea,
-  StockBadge,
   Spinner,
   EmptyState,
 } from '@/components/ui';
@@ -103,13 +102,16 @@ export function ProductDetailPage() {
         Productos
       </Link>
 
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-display text-xl font-semibold tracking-tight">{product.name}</h2>
-          <p className="truncate font-mono text-xs text-muted-foreground">{product.code}</p>
-        </div>
-        <StockBadge stock={product.stock} />
-      </header>
+      {/* Código QR */}
+      <section className="space-y-2">
+        <h3 className="px-1 font-display text-sm font-semibold">Código QR</h3>
+        <QrPreview value={product.code} label={product.name} />
+        {dirty && code !== product.code && (
+          <p className="px-1 text-xs text-muted-foreground">
+            Guarda los cambios para regenerar el QR con el nuevo código.
+          </p>
+        )}
+      </section>
 
       {/* Editar datos */}
       <Card className="space-y-4 p-4">
@@ -182,17 +184,6 @@ export function ProductDetailPage() {
           </Button>
         </form>
       </Card>
-
-      {/* Código QR */}
-      <section className="space-y-2">
-        <h3 className="px-1 font-display text-sm font-semibold">Código QR</h3>
-        <QrPreview value={product.code} label={product.name} />
-        {dirty && code !== product.code && (
-          <p className="px-1 text-xs text-muted-foreground">
-            Guarda los cambios para regenerar el QR con el nuevo código.
-          </p>
-        )}
-      </section>
 
       {/* Zona de peligro */}
       <section className="space-y-2">
