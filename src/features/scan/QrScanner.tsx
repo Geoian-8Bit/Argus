@@ -19,14 +19,18 @@ export function QrScanner({ onDecoded, paused = false }: QrScannerProps) {
     if (paused) return;
 
     let cancelled = false;
-    setStarting(true);
     setError(null);
 
-    const scanner = new Html5Qrcode(containerId, {
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      verbose: false,
-    });
-    scannerRef.current = scanner;
+    // La cámara solo funciona en contexto seguro (HTTPS o localhost).
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      setError(
+        'La cámara solo funciona por HTTPS. Abre la app publicada (https://…) o en localhost; no por la IP local (http://192.168…).',
+      );
+      setStarting(false);
+      return;
+    }
+
+    setStarting(true);
 
     const config = { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 };
     const onScan = (decoded: string) => onDecoded(decoded);
@@ -34,16 +38,34 @@ export function QrScanner({ onDecoded, paused = false }: QrScannerProps) {
       // ignoramos errores de frames sin código
     };
 
+    function makeScanner() {
+      const instance = new Html5Qrcode(containerId, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
+      });
+      scannerRef.current = instance;
+      return instance;
+    }
+
     async function start() {
       // Arranque rápido: abre directamente la cámara trasera (una sola
-      // apertura). Si el dispositivo no acepta facingMode, enumeramos.
+      // apertura). Si falla, reintenta enumerando con una instancia nueva.
       try {
-        await scanner.start({ facingMode: { ideal: 'environment' } }, config, onScan, onFrameError);
+        const scanner = makeScanner();
+        await scanner.start({ facingMode: 'environment' }, config, onScan, onFrameError);
         if (!cancelled) setStarting(false);
         return;
       } catch {
-        // continúa con el fallback
+        const dirty = scannerRef.current;
+        scannerRef.current = null;
+        try {
+          await dirty?.clear();
+        } catch {
+          /* ignore */
+        }
       }
+
+      if (cancelled) return;
 
       try {
         const cameras = await Html5Qrcode.getCameras();
@@ -55,6 +77,7 @@ export function QrScanner({ onDecoded, paused = false }: QrScannerProps) {
         }
         const cameraId =
           cameras.find((c) => /back|rear|environment/i.test(c.label))?.id ?? cameras[0].id;
+        const scanner = makeScanner();
         await scanner.start(cameraId, config, onScan, onFrameError);
         if (!cancelled) setStarting(false);
       } catch (err) {
