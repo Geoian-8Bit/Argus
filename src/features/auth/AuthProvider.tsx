@@ -36,13 +36,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
       session,
       user: session?.user ?? null,
       loading,
-      signInWithEmail: async (email: string) => {
-        const { error } = await supabase.auth.signInWithOtp({
+      signIn: async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      signUp: async (email: string, password: string) => {
+        const { data, error } = await supabase.auth.signUp({
           email,
+          password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
+        if (error) throw error;
+        // Si Supabase exige confirmar el email, no devuelve sesión todavía.
+        return { needsConfirmation: !data.session };
+      },
+      resetPassword: async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+      },
+      updatePassword: async (password: string) => {
+        const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
       },
       signOut: async () => {

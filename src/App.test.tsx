@@ -11,7 +11,10 @@ vi.mock('@/lib/supabase', () => ({
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
-      signInWithOtp: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
+      resetPasswordForEmail: vi.fn(),
+      updateUser: vi.fn(),
       signOut: vi.fn(),
     },
   },
@@ -33,6 +36,7 @@ describe('App', () => {
     renderApp('/');
     expect(await screen.findByRole('heading', { name: /argus/i })).toBeInTheDocument();
     expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /enviarme el enlace/i })).toBeInTheDocument();
+    expect(await screen.findByLabelText(/contraseña/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /entrar/i })).toBeInTheDocument();
   });
 });

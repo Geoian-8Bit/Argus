@@ -8,6 +8,9 @@ import { ProductsPage } from '@/pages/ProductsPage';
 import { ProductNewPage } from '@/pages/ProductNewPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { SignupPage } from '@/pages/SignupPage';
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 
 function App() {
@@ -15,6 +18,9 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route
           path="/*"
