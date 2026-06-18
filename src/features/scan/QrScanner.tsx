@@ -19,60 +19,56 @@ export function QrScanner({ onDecoded, paused = false }: QrScannerProps) {
     if (paused) return;
 
     let cancelled = false;
-    let scanner: Html5Qrcode | null = null;
     setStarting(true);
     setError(null);
 
-    Html5Qrcode.getCameras()
-      .then(async (cameras) => {
+    const scanner = new Html5Qrcode(containerId, {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false,
+    });
+    scannerRef.current = scanner;
+
+    const config = { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 };
+    const onScan = (decoded: string) => onDecoded(decoded);
+    const onFrameError = () => {
+      // ignoramos errores de frames sin código
+    };
+
+    async function start() {
+      // Arranque rápido: abre directamente la cámara trasera (una sola
+      // apertura). Si el dispositivo no acepta facingMode, enumeramos.
+      try {
+        await scanner.start({ facingMode: { ideal: 'environment' } }, config, onScan, onFrameError);
+        if (!cancelled) setStarting(false);
+        return;
+      } catch {
+        // continúa con el fallback
+      }
+
+      try {
+        const cameras = await Html5Qrcode.getCameras();
         if (cancelled) return;
         if (!cameras || cameras.length === 0) {
           setError('No se ha detectado ninguna cámara en este dispositivo.');
           setStarting(false);
           return;
         }
-        scanner = new Html5Qrcode(containerId, {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-          verbose: false,
-        });
-        scannerRef.current = scanner;
         const cameraId =
           cameras.find((c) => /back|rear|environment/i.test(c.label))?.id ?? cameras[0].id;
-        try {
-          await scanner.start(
-            cameraId,
-            {
-              fps: 10,
-              qrbox: { width: 240, height: 240 },
-              aspectRatio: 1,
-            },
-            (decoded) => {
-              onDecoded(decoded);
-            },
-            () => {
-              // ignoramos errores de frames sin código
-            },
-          );
-          if (!cancelled) setStarting(false);
-        } catch (err) {
-          if (cancelled) return;
-          setError(
-            err instanceof Error
-              ? `No se pudo abrir la cámara: ${err.message}`
-              : 'No se pudo abrir la cámara.',
-          );
-          setStarting(false);
-        }
-      })
-      .catch((err) => {
+        await scanner.start(cameraId, config, onScan, onFrameError);
+        if (!cancelled) setStarting(false);
+      } catch (err) {
         if (cancelled) return;
         setError(
           err instanceof Error
-            ? `Error accediendo a la cámara: ${err.message}`
-            : 'Error accediendo a la cámara.',
+            ? `No se pudo abrir la cámara: ${err.message}`
+            : 'No se pudo abrir la cámara.',
         );
         setStarting(false);
-      });
+      }
+    }
+
+    void start();
 
     return () => {
       cancelled = true;
