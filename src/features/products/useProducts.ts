@@ -9,7 +9,11 @@ export function useProducts(search = '') {
   return useQuery({
     queryKey: ['products', 'list', term],
     queryFn: async (): Promise<Product[]> => {
-      let query = supabase.from('products').select('*').order('name', { ascending: true });
+      let query = supabase
+        .from('products')
+        .select('*')
+        .is('archived_at', null)
+        .order('name', { ascending: true });
       if (term) {
         const like = `%${term}%`;
         query = query.or(`code.ilike.${like},name.ilike.${like}`);

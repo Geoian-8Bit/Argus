@@ -4,21 +4,20 @@ import type { Tables } from '@/lib/database.types';
 
 export type Product = Tables<'products'>;
 
-export function productByCodeKey(code: string) {
-  return ['product', 'by-code', code] as const;
+export function productKey(id: string) {
+  return ['products', 'by-id', id] as const;
 }
 
-export function useProductByCode(code: string | null) {
+export function useProduct(id: string | undefined) {
   return useQuery({
-    queryKey: productByCodeKey(code ?? ''),
-    enabled: !!code,
+    queryKey: productKey(id ?? ''),
+    enabled: !!id,
     queryFn: async (): Promise<Product | null> => {
-      if (!code) return null;
+      if (!id) return null;
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('code', code)
-        .is('archived_at', null)
+        .eq('id', id)
         .maybeSingle();
       if (error) throw new Error(error.message);
       return data;

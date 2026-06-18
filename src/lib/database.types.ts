@@ -51,6 +51,7 @@ export type Database = {
       };
       products: {
         Row: {
+          archived_at: string | null;
           code: string;
           created_at: string;
           id: string;
@@ -61,6 +62,7 @@ export type Database = {
           variant: string | null;
         };
         Insert: {
+          archived_at?: string | null;
           code: string;
           created_at?: string;
           id?: string;
@@ -71,6 +73,7 @@ export type Database = {
           variant?: string | null;
         };
         Update: {
+          archived_at?: string | null;
           code?: string;
           created_at?: string;
           id?: string;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Package, PackagePlus, Plus, SearchX } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight } from 'lucide-react';
 import { useProducts } from '@/features/products/useProducts';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
@@ -65,19 +66,28 @@ export function ProductsPage() {
         />
       ) : products.data && products.data.length > 0 ? (
         <Card>
-          <ul className="divide-y divide-border px-4">
+          <ul className="divide-y divide-border">
             {products.data.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {p.name}
-                    {p.variant ? (
-                      <span className="text-muted-foreground"> · {p.variant}</span>
-                    ) : null}
-                  </p>
-                  <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
-                </div>
-                <StockBadge stock={p.stock} />
+              <li key={p.id}>
+                <Link
+                  to={`/products/${p.id}`}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {p.name}
+                      {p.variant ? (
+                        <span className="text-muted-foreground"> · {p.variant}</span>
+                      ) : null}
+                    </p>
+                    <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
+                  </div>
+                  <StockBadge stock={p.stock} />
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                </Link>
               </li>
             ))}
           </ul>

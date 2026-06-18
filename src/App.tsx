@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage';
 import { ScanPage } from '@/pages/ScanPage';
 import { ProductsPage } from '@/pages/ProductsPage';
 import { ProductNewPage } from '@/pages/ProductNewPage';
+import { ProductDetailPage } from '@/pages/ProductDetailPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
@@ -32,6 +33,7 @@ function App() {
                   <Route path="/scan" element={<ScanPage />} />
                   <Route path="/products" element={<ProductsPage />} />
                   <Route path="/products/new" element={<ProductNewPage />} />
+                  <Route path="/products/:id" element={<ProductDetailPage />} />
                   <Route path="/history" element={<HistoryPage />} />
                 </Routes>
               </AppShell>
