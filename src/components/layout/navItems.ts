@@ -1,4 +1,4 @@
-import { Home, Package, History, type LucideIcon } from 'lucide-react';
+import { Home, LayoutDashboard, Package, History, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -10,6 +10,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
+  { to: '/dashboard', label: 'Panel', icon: LayoutDashboard },
   { to: '/products', label: 'Productos', icon: Package },
   { to: '/history', label: 'Historial', icon: History },
 ];

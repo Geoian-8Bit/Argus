@@ -87,7 +87,21 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      product_stats: {
+        Row: {
+          archived_at: string | null;
+          code: string | null;
+          id: string | null;
+          last_movement_at: string | null;
+          movements_count: number | null;
+          name: string | null;
+          stock: number | null;
+          total_in: number | null;
+          total_out: number | null;
+          variant: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       [_ in never]: never;
