@@ -21,10 +21,8 @@ export function useRegisterMovement() {
       if (input.qty <= 0) {
         throw new Error('La cantidad debe ser mayor que 0.');
       }
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      // No enviamos user_id/user_email: la base de datos los rellena con
+      // auth.uid() y el email del JWT (auditoría fiable, no manipulable).
       const { data, error } = await supabase
         .from('movements')
         .insert({
@@ -32,7 +30,6 @@ export function useRegisterMovement() {
           type: input.type,
           qty: input.qty,
           note: input.note ?? null,
-          user_id: user?.id ?? null,
         })
         .select()
         .single();

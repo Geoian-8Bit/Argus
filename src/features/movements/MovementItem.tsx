@@ -16,6 +16,7 @@ export function MovementItem({ movement, timeFormat = 'relative' }: MovementItem
   const variant = movement.products?.variant;
   const when =
     timeFormat === 'time' ? timeLabel(movement.created_at) : relativeTime(movement.created_at);
+  const author = movement.user_email?.split('@')[0] ?? 'sistema';
 
   return (
     <li className="flex items-center gap-3 py-3">
@@ -32,7 +33,9 @@ export function MovementItem({ movement, timeFormat = 'relative' }: MovementItem
           {name}
           {variant ? <span className="text-muted-foreground"> · {variant}</span> : null}
         </p>
-        <p className="text-xs text-muted-foreground">{when}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {when} · <span title={movement.user_email ?? undefined}>{author}</span>
+        </p>
       </div>
       <span
         className={cn(

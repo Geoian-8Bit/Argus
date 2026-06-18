@@ -11,6 +11,7 @@ export interface MovementWithProduct {
   note: string | null;
   created_at: string;
   user_id: string | null;
+  user_email: string | null;
   products: { name: string; variant: string | null; code: string } | null;
 }
 
@@ -20,7 +21,7 @@ export function useMovements(limit = 100) {
     queryFn: async (): Promise<MovementWithProduct[]> => {
       const { data, error } = await supabase
         .from('movements')
-        .select('id,type,qty,note,created_at,user_id, products(name,variant,code)')
+        .select('id,type,qty,note,created_at,user_id,user_email, products(name,variant,code)')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw new Error(error.message);

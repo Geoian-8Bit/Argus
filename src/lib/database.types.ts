@@ -16,6 +16,7 @@ export type Database = {
           product_id: string;
           qty: number;
           type: Database['public']['Enums']['movement_type'];
+          user_email: string | null;
           user_id: string | null;
         };
         Insert: {
@@ -25,6 +26,7 @@ export type Database = {
           product_id: string;
           qty: number;
           type: Database['public']['Enums']['movement_type'];
+          user_email?: string | null;
           user_id?: string | null;
         };
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           product_id?: string;
           qty?: number;
           type?: Database['public']['Enums']['movement_type'];
+          user_email?: string | null;
           user_id?: string | null;
         };
         Relationships: [
