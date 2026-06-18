@@ -9,23 +9,11 @@ import {
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
-import { useAuth } from '@/features/auth/useAuth';
 import { useDashboardStats } from '@/features/dashboard/useDashboardStats';
 import { useMovements } from '@/features/movements/useMovements';
 import { MovementItem } from '@/features/movements/MovementItem';
 import { Card, EmptyState, Skeleton, StatTile } from '@/components/ui';
 import { cn } from '@/lib/utils';
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h >= 6 && h < 13) return 'Buenos días';
-  if (h >= 13 && h < 21) return 'Buenas tardes';
-  return 'Buenas noches';
-}
-
-function todayLabel(): string {
-  return new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-}
 
 interface ActionCardProps {
   to: string;
@@ -65,21 +53,20 @@ function ActionCard({ to, tone, icon: Icon, title, subtitle }: ActionCardProps) 
 }
 
 export function HomePage() {
-  const { user } = useAuth();
   const stats = useDashboardStats();
   const recent = useMovements(5);
-  const name = user?.email?.split('@')[0] ?? '';
   const lowStock = stats.data?.lowStock ?? 0;
 
   return (
     <div className="space-y-7">
-      <header className="space-y-0.5">
-        <p className="text-sm capitalize text-muted-foreground">
-          {greeting()} · {todayLabel()}
-        </p>
+      <header className="space-y-1">
         <h2 className="font-display text-2xl font-semibold tracking-tight">
-          {name ? `Hola, ${name}` : 'Bienvenido'}
+          Control de stock por QR
         </h2>
+        <p className="text-sm text-muted-foreground">
+          Escanea el código de un producto para registrar entradas y salidas. Aquí tienes el resumen
+          del inventario y los últimos movimientos.
+        </p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
