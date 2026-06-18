@@ -1,14 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 
-function renderApp() {
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
+      signInWithOtp: vi.fn(),
+      signOut: vi.fn(),
+    },
+  },
+}));
+
+function renderApp(initialPath: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[initialPath]}>
         <App />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -16,10 +29,10 @@ function renderApp() {
 }
 
 describe('App', () => {
-  it('renderiza la cabecera y los botones de acción', () => {
-    renderApp();
-    expect(screen.getByRole('heading', { name: /qr stock/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /añadir/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /retirar/i })).toBeInTheDocument();
+  it('redirige a /login cuando no hay sesión', async () => {
+    renderApp('/');
+    expect(await screen.findByRole('heading', { name: /qr stock/i })).toBeInTheDocument();
+    expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /enviarme el enlace/i })).toBeInTheDocument();
   });
 });
