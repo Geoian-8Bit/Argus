@@ -1,41 +1,182 @@
-name: CI
+name: CI/CD
+
+# Calidad de código, tests y build en paralelo. Si todo pasa y es push a
+# main, despliega a Vercel en producción.
+#
+# Diseño (igual que en Vantage):
+# - Un job `install` instala dependencias una sola vez y las cachea; los
+#   demás jobs reutilizan ese cache.
+# - Calidad, tests y build corren en paralelo.
+# - `build` recibe variables públicas de Supabase con valores dummy: Vite
+#   las inyecta al bundle al compilar, así que con un valor válido basta
+#   para que el build no aborte. Estas NO se aplican al job `deploy`.
+# - `deploy` solo se lanza tras CI verde en push a main, usando la CLI de
+#   Vercel (vercel pull/build/deploy --prebuilt).
+#
+# IMPORTANTE: las VITE_SUPABASE_* dummy van por job (en `build`), nunca a
+# nivel de workflow. Si estuvieran a nivel workflow envenenarían el job
+# `deploy`: vercel build leería el dummy y lo hardcodearía en el bundle de
+# producción, aunque vercel pull haya traído las env reales del proyecto.
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
 
 jobs:
-  build:
+  # ─── Setup: instala deps una sola vez y las cachea ─────────────────────
+  install:
+    name: Install dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci --no-audit --no-fund
+
+  # ─── Calidad: lint + formato + typecheck ───────────────────────────────
+  quality:
+    name: Lint + format + typecheck
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install
-        run: npm ci
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Lint
+      - name: ESLint
         run: npm run lint
 
-      - name: Format check
+      - name: Prettier check
         run: npm run format:check
 
-      - name: Typecheck
+      - name: TypeScript
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
+  # ─── Tests unitarios con cobertura ─────────────────────────────────────
+  unit:
+    name: Unit tests
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run Vitest with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ─── Build de Vite + PWA ───────────────────────────────────────────────
+  build:
+    name: Vite build
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Públicas dummy: el build de CI no apunta a un Supabase real; Vite
+      # inyecta las VITE_* al bundle al compilar, así que con un valor
+      # sintácticamente válido basta para que el build no aborte. Estas NO
+      # se aplican al job deploy.
+      VITE_SUPABASE_URL: https://dummy.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_dummy_key_for_ci_builds_only
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
       - name: Build
-        env:
-          VITE_SUPABASE_URL: https://example.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
         run: npm run build
+
+  # ─── Deploy a Vercel (solo push a main + todo verde) ───────────────────
+  deploy:
+    name: Deploy to Vercel
+    needs: [quality, unit, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build with Vercel
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
