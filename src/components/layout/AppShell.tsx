@@ -12,7 +12,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">QR Stock</h1>
+        <h1 className="text-lg font-semibold">Argus</h1>
         {user && (
           <button
             type="button"

@@ -1,4 +1,6 @@
-# QR Stock
+# Argus
+
+PWA para gestión de stock y logística por escaneo de códigos QR. El nombre rinde homenaje a Argos Panoptes, el gigante de los cien ojos de la mitología griega: el que todo lo vigila — como un escáner que mantiene el inventario bajo control.
 
 PWA para gestión de stock por escaneo de códigos QR. Pensada para resolver desfases de inventario en almacenes donde los movimientos los registran personas en ruta.
 

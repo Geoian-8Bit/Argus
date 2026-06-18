@@ -31,7 +31,7 @@ export function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <header className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">QR Stock</h1>
+          <h1 className="text-2xl font-semibold">Argus</h1>
           <p className="text-sm text-muted-foreground">
             Accede con tu email. Recibirás un enlace para entrar sin contraseña.
           </p>

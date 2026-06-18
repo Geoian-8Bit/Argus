@@ -1,7 +1,7 @@
 # Configuración mínima para `supabase` CLI en desarrollo local.
 # Documentación: https://supabase.com/docs/guides/local-development/cli/config
 
-project_id = "qr-stock"
+project_id = "argus"
 
 [api]
 enabled = true

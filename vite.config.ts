@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'icons/*.png'],
       manifest: {
-        name: 'QR Stock',
-        short_name: 'QR Stock',
+        name: 'Argus',
+        short_name: 'Argus',
         description: 'Gestión de stock por escaneo de códigos QR',
         theme_color: '#0f172a',
         background_color: '#ffffff',

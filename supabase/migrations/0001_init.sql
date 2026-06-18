@@ -1,4 +1,4 @@
--- QR Stock — esquema inicial.
+-- Argus — esquema inicial.
 -- Tablas: products, movements. RLS habilitada y abierta a usuarios autenticados.
 -- Endurecer las políticas (por rol/empresa) cuando se defina el modelo de usuarios.
 

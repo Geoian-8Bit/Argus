@@ -31,7 +31,7 @@ function renderApp(initialPath: string) {
 describe('App', () => {
   it('redirige a /login cuando no hay sesión', async () => {
     renderApp('/');
-    expect(await screen.findByRole('heading', { name: /qr stock/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /argus/i })).toBeInTheDocument();
     expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /enviarme el enlace/i })).toBeInTheDocument();
   });
