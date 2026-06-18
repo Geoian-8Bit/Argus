@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
+import { useRole } from '@/features/auth/useRole';
 import { Wordmark } from '@/components/brand/Wordmark';
 import { IconButton } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import { BottomNav } from './BottomNav';
 
 interface AppShellProps {
@@ -11,6 +13,9 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
+  const role = useRole();
+  // La barra de navegación es solo para admin; staff solo escanea.
+  const showNav = role.data === 'admin';
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -25,11 +30,18 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
+      <main
+        className={cn(
+          'mx-auto w-full max-w-lg flex-1 px-4 pt-5',
+          showNav
+            ? 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(1.5rem+env(safe-area-inset-bottom))]',
+        )}
+      >
         {children}
       </main>
 
-      <BottomNav />
+      {showNav && <BottomNav />}
     </div>
   );
 }

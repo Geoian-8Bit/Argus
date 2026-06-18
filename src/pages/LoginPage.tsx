@@ -72,15 +72,6 @@ export function LoginPage() {
         >
           ¿Olvidaste tu contraseña?
         </Link>
-        <p className="text-muted-foreground">
-          ¿No tienes cuenta?{' '}
-          <Link
-            to="/signup"
-            className="font-medium text-foreground underline-offset-2 hover:underline"
-          >
-            Crear cuenta
-          </Link>
-        </p>
       </div>
     </AuthLayout>
   );

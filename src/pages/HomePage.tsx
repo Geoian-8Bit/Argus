@@ -12,6 +12,7 @@ import {
 import { useDashboardStats } from '@/features/dashboard/useDashboardStats';
 import { useMovements } from '@/features/movements/useMovements';
 import { MovementItem } from '@/features/movements/MovementItem';
+import { useRole } from '@/features/auth/useRole';
 import { Card, EmptyState, Skeleton, StatTile } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +54,8 @@ function ActionCard({ to, tone, icon: Icon, title, subtitle }: ActionCardProps) 
 }
 
 export function HomePage() {
+  const role = useRole();
+  const isAdmin = role.data === 'admin';
   const stats = useDashboardStats();
   const recent = useMovements(5);
   const lowStock = stats.data?.lowStock ?? 0;
@@ -64,8 +67,9 @@ export function HomePage() {
           Control de stock por QR
         </h2>
         <p className="text-sm text-muted-foreground">
-          Escanea el código de un producto para registrar entradas y salidas. Aquí tienes el resumen
-          del inventario y los últimos movimientos.
+          {isAdmin
+            ? 'Escanea el código de un producto para registrar entradas y salidas. Aquí tienes el resumen del inventario y los últimos movimientos.'
+            : 'Escanea el código de un producto para registrar una entrada o una salida de stock.'}
         </p>
       </header>
 
@@ -86,66 +90,74 @@ export function HomePage() {
         />
       </div>
 
-      <section className="space-y-2.5">
-        <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Resumen
-        </h3>
-        <div className="grid grid-cols-3 gap-3">
-          {stats.isLoading ? (
-            <>
-              <Skeleton className="h-[5.25rem]" />
-              <Skeleton className="h-[5.25rem]" />
-              <Skeleton className="h-[5.25rem]" />
-            </>
-          ) : (
-            <>
-              <StatTile label="Productos" value={stats.data?.totalProducts ?? 0} icon={Package} />
-              <StatTile
-                label="Stock bajo"
-                value={lowStock}
-                icon={TriangleAlert}
-                tone={lowStock > 0 ? 'warning' : 'default'}
+      {isAdmin && (
+        <>
+          <section className="space-y-2.5">
+            <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Resumen
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              {stats.isLoading ? (
+                <>
+                  <Skeleton className="h-[5.25rem]" />
+                  <Skeleton className="h-[5.25rem]" />
+                  <Skeleton className="h-[5.25rem]" />
+                </>
+              ) : (
+                <>
+                  <StatTile
+                    label="Productos"
+                    value={stats.data?.totalProducts ?? 0}
+                    icon={Package}
+                  />
+                  <StatTile
+                    label="Stock bajo"
+                    value={lowStock}
+                    icon={TriangleAlert}
+                    tone={lowStock > 0 ? 'warning' : 'default'}
+                  />
+                  <StatTile label="Hoy" value={stats.data?.movementsToday ?? 0} icon={Activity} />
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Actividad reciente
+              </h3>
+              <Link
+                to="/history"
+                className="text-xs font-medium text-brand underline-offset-2 hover:underline"
+              >
+                Ver todo
+              </Link>
+            </div>
+
+            {recent.isLoading ? (
+              <Card className="space-y-3 p-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </Card>
+            ) : recent.data && recent.data.length > 0 ? (
+              <Card>
+                <ul className="divide-y divide-border px-4">
+                  {recent.data.map((m) => (
+                    <MovementItem key={m.id} movement={m} />
+                  ))}
+                </ul>
+              </Card>
+            ) : (
+              <EmptyState
+                icon={Inbox}
+                title="Sin movimientos todavía"
+                description="Escanea un producto para registrar la primera entrada o salida."
               />
-              <StatTile label="Hoy" value={stats.data?.movementsToday ?? 0} icon={Activity} />
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Actividad reciente
-          </h3>
-          <Link
-            to="/history"
-            className="text-xs font-medium text-brand underline-offset-2 hover:underline"
-          >
-            Ver todo
-          </Link>
-        </div>
-
-        {recent.isLoading ? (
-          <Card className="space-y-3 p-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </Card>
-        ) : recent.data && recent.data.length > 0 ? (
-          <Card>
-            <ul className="divide-y divide-border px-4">
-              {recent.data.map((m) => (
-                <MovementItem key={m.id} movement={m} />
-              ))}
-            </ul>
-          </Card>
-        ) : (
-          <EmptyState
-            icon={Inbox}
-            title="Sin movimientos todavía"
-            description="Escanea un producto para registrar la primera entrada o salida."
-          />
-        )}
-      </section>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

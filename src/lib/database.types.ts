@@ -85,6 +85,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          created_at: string;
+          email: string | null;
+          id: string;
+          role: string;
+        };
+        Insert: {
+          created_at?: string;
+          email?: string | null;
+          id: string;
+          role?: string;
+        };
+        Update: {
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          role?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       product_stats: {
