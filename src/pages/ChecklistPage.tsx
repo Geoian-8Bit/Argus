@@ -70,7 +70,7 @@ export function ChecklistPage() {
   }
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="space-y-5 pb-20">
       <PageHeader
         title="Material en furgoneta"
         subtitle="Marca lo que NO llevas; el resto queda como presente."
@@ -156,8 +156,8 @@ export function ChecklistPage() {
         )}
       </div>
 
-      {/* Barra de guardado fija */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      {/* Barra de guardado fija, justo encima de la navegación inferior. */}
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <p className="flex-1 text-sm text-muted-foreground">
             {missing.length === 0 ? (
