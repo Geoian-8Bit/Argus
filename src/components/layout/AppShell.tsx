@@ -6,6 +6,7 @@ import { Wordmark } from '@/components/brand/Wordmark';
 import { IconButton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { BottomNav } from './BottomNav';
+import { ADMIN_NAV_ITEMS, STAFF_NAV_ITEMS } from './navItems';
 
 interface AppShellProps {
   children: ReactNode;
@@ -14,8 +15,9 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { user, signOut } = useAuth();
   const role = useRole();
-  // La barra de navegación es solo para admin; staff solo escanea.
-  const showNav = role.data === 'admin';
+  // Admin y staff tienen navegación, con ítems distintos según el rol.
+  const navItems = role.data === 'admin' ? ADMIN_NAV_ITEMS : STAFF_NAV_ITEMS;
+  const showNav = !!role.data;
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -41,7 +43,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </main>
 
-      {showNav && <BottomNav />}
+      {showNav && <BottomNav items={navItems} />}
     </div>
   );
 }

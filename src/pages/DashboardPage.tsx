@@ -10,12 +10,15 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useProductStats, type ProductStat } from '@/features/dashboard/useProductStats';
 import { useActivity } from '@/features/dashboard/useActivity';
 import { useSales } from '@/features/dashboard/useSales';
 import { periodRange, GRANULARITIES, type Granularity } from '@/features/dashboard/period';
+import { useRole } from '@/features/auth/useRole';
+import { ChecklistReviews } from '@/features/checklist/ChecklistReviews';
 import {
   PageHeader,
   Card,
@@ -26,6 +29,7 @@ import {
   IconButton,
   Button,
   Segmented,
+  Spinner,
 } from '@/components/ui';
 import { formatMoney } from '@/lib/format';
 import { Link } from 'react-router-dom';
@@ -233,9 +237,9 @@ function PeriodSales() {
   );
 }
 
-type DashboardTab = 'sales' | 'inventory';
+type DashboardTab = 'sales' | 'inventory' | 'checklist';
 
-export function DashboardPage() {
+function AdminDashboard() {
   const [tab, setTab] = useState<DashboardTab>('sales');
   const stats = useProductStats();
   const data = stats.data ?? [];
@@ -254,7 +258,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Panel" subtitle="Inventario y ventas de un vistazo." />
+      <PageHeader title="Panel" subtitle="Inventario, ventas y revisiones de furgoneta." />
 
       <Segmented
         ariaLabel="Vista del panel"
@@ -263,10 +267,11 @@ export function DashboardPage() {
         options={[
           { value: 'sales', label: 'Ventas' },
           { value: 'inventory', label: 'Inventario' },
+          { value: 'checklist', label: 'Furgoneta' },
         ]}
       />
 
-      {tab === 'sales' ? (
+      {tab === 'sales' && (
         <div className="space-y-6">
           <PeriodSales />
 
@@ -290,7 +295,9 @@ export function DashboardPage() {
             )}
           </section>
         </div>
-      ) : (
+      )}
+
+      {tab === 'inventory' && (
         <div className="space-y-6">
           {stats.isLoading ? (
             <div className="grid grid-cols-2 gap-3">
@@ -367,6 +374,37 @@ export function DashboardPage() {
           )}
         </div>
       )}
+
+      {tab === 'checklist' && (
+        <section className="space-y-2.5">
+          <SectionTitle icon={ClipboardCheck}>Revisiones de furgoneta</SectionTitle>
+          <ChecklistReviews showAuthor />
+        </section>
+      )}
     </div>
   );
+}
+
+// El staff (repartidores) solo ve sus propias revisiones de furgoneta.
+function StaffChecklistView() {
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Revisiones" subtitle="Tu historial de revisiones de furgoneta." />
+      <ChecklistReviews />
+    </div>
+  );
+}
+
+export function DashboardPage() {
+  const role = useRole();
+
+  if (role.isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Spinner /> Cargando…
+      </div>
+    );
+  }
+
+  return role.data === 'admin' ? <AdminDashboard /> : <StaffChecklistView />;
 }

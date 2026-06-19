@@ -11,6 +11,7 @@ import { ProductNewPage } from '@/pages/ProductNewPage';
 import { ProductDetailPage } from '@/pages/ProductDetailPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { UsersPage } from '@/pages/UsersPage';
+import { ChecklistPage } from '@/pages/ChecklistPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
@@ -32,14 +33,9 @@ function App() {
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/scan" element={<ScanPage />} />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <RequireAdmin>
-                        <DashboardPage />
-                      </RequireAdmin>
-                    }
-                  />
+                  <Route path="/checklist" element={<ChecklistPage />} />
+                  {/* El panel se auto-restringe: staff solo ve sus revisiones. */}
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route
                     path="/products"
                     element={
