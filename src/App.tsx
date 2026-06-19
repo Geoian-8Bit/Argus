@@ -10,6 +10,7 @@ import { ProductsPage } from '@/pages/ProductsPage';
 import { ProductNewPage } from '@/pages/ProductNewPage';
 import { ProductDetailPage } from '@/pages/ProductDetailPage';
 import { HistoryPage } from '@/pages/HistoryPage';
+import { UsersPage } from '@/pages/UsersPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
@@ -68,6 +69,14 @@ function App() {
                     element={
                       <RequireAdmin>
                         <HistoryPage />
+                      </RequireAdmin>
+                    }
+                  />
+                  <Route
+                    path="/users"
+                    element={
+                      <RequireAdmin>
+                        <UsersPage />
                       </RequireAdmin>
                     }
                   />
