@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { UserPlus, Users as UsersIcon, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, ShieldCheck, CheckCircle2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 import type { Role } from '@/features/auth/useRole';
 import { useUsers, type UserProfile } from '@/features/users/useUsers';
 import { useCreateUser } from '@/features/users/useCreateUser';
 import { useUpdateUserRole } from '@/features/users/useUpdateUserRole';
+import { useDeleteUser } from '@/features/users/useDeleteUser';
 import {
   PageHeader,
   Card,
@@ -18,6 +19,7 @@ import {
   EmptyState,
   Skeleton,
   Spinner,
+  IconButton,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
@@ -177,6 +179,10 @@ function CreateUserForm() {
 
 function UserRow({ user, isSelf }: { user: UserProfile; isSelf: boolean }) {
   const updateRole = useUpdateUserRole();
+  const deleteUser = useDeleteUser();
+  const [confirming, setConfirming] = useState(false);
+
+  const error = updateRole.error ?? deleteUser.error;
 
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -189,31 +195,64 @@ function UserRow({ user, isSelf }: { user: UserProfile; isSelf: boolean }) {
             </Badge>
           )}
         </p>
-        {updateRole.isError && (
+        {error && (
           <span className="block text-xs text-destructive" role="alert">
-            {updateRole.error.message}
+            {error.message}
           </span>
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {updateRole.isPending && <Spinner />}
+        {(updateRole.isPending || deleteUser.isPending) && <Spinner />}
         {isSelf ? (
-          // No permitimos que un admin se cambie el rol a sí mismo (riesgo de quedarse fuera).
+          // No permitimos que un admin se cambie el rol ni se elimine a sí mismo
+          // (riesgo de quedarse fuera).
           <Badge tone={user.role === 'admin' ? 'ok' : 'neutral'} className="gap-1">
             {user.role === 'admin' && <ShieldCheck className="h-3 w-3" aria-hidden="true" />}
             {user.role === 'admin' ? 'Admin' : 'Staff'}
           </Badge>
+        ) : confirming ? (
+          <>
+            <span className="text-xs text-muted-foreground">¿Eliminar?</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-auto"
+              loading={deleteUser.isPending}
+              onClick={() => deleteUser.mutate(user.id, { onError: () => setConfirming(true) })}
+            >
+              Sí
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto"
+              disabled={deleteUser.isPending}
+              onClick={() => setConfirming(false)}
+            >
+              No
+            </Button>
+          </>
         ) : (
-          <RoleSelect
-            idPrefix={`role-${user.id}`}
-            size="sm"
-            value={user.role}
-            disabled={updateRole.isPending}
-            onChange={(role) => {
-              if (role !== user.role) updateRole.mutate({ id: user.id, role });
-            }}
-          />
+          <>
+            <RoleSelect
+              idPrefix={`role-${user.id}`}
+              size="sm"
+              value={user.role}
+              disabled={updateRole.isPending}
+              onChange={(role) => {
+                if (role !== user.role) updateRole.mutate({ id: user.id, role });
+              }}
+            />
+            <IconButton
+              aria-label={`Eliminar ${user.email ?? 'usuario'}`}
+              className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
+              disabled={updateRole.isPending}
+              onClick={() => setConfirming(true)}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </IconButton>
+          </>
         )}
       </div>
     </li>
