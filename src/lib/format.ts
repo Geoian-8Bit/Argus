@@ -39,3 +39,14 @@ export function dayLabel(iso: string): string {
 export function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 }
+
+const moneyFmt = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 2,
+});
+
+/** Importe en euros: "12,50 €". Tolera string (numeric de Postgres) o number. */
+export function formatMoney(value: number | string | null | undefined): string {
+  return moneyFmt.format(Number(value) || 0);
+}

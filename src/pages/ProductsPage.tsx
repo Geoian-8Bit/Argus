@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight } from 'lucide-react';
 import { useProducts } from '@/features/products/useProducts';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { formatMoney } from '@/lib/format';
 import {
   PageHeader,
   ButtonLink,
@@ -18,6 +19,10 @@ export function ProductsPage() {
   const debounced = useDebouncedValue(search, 250);
   const products = useProducts(debounced);
   const isSearching = debounced.trim().length > 0;
+
+  const list = products.data ?? [];
+  const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
+  const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
 
   return (
     <div className="space-y-5">
@@ -64,34 +69,51 @@ export function ProductsPage() {
             products.error instanceof Error ? products.error.message : 'Inténtalo de nuevo.'
           }
         />
-      ) : products.data && products.data.length > 0 ? (
-        <Card>
-          <ul className="divide-y divide-border">
-            {products.data.map((p) => (
-              <li key={p.id}>
-                <Link
-                  to={`/products/${p.id}`}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {p.name}
-                      {p.variant ? (
-                        <span className="text-muted-foreground"> · {p.variant}</span>
-                      ) : null}
-                    </p>
-                    <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
-                  </div>
-                  <StockBadge stock={p.stock} />
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      ) : list.length > 0 ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
+            <span className="text-muted-foreground">
+              {list.length} {list.length === 1 ? 'producto' : 'productos'} ·{' '}
+              <span className="tabular-nums text-foreground">{totalUnits}</span> uds
+            </span>
+            <span className="font-semibold tabular-nums" title="Valor del stock a precio base">
+              {formatMoney(totalValue)}
+            </span>
+          </div>
+
+          <Card>
+            <ul className="divide-y divide-border">
+              {list.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    to={`/products/${p.id}`}
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {p.name}
+                        {p.variant ? (
+                          <span className="text-muted-foreground"> · {p.variant}</span>
+                        ) : null}
+                      </p>
+                      <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <StockBadge stock={p.stock} />
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {formatMoney(p.stock * p.price)}
+                      </span>
+                    </div>
+                    <ChevronRight
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
       ) : isSearching ? (
         <EmptyState
           icon={SearchX}

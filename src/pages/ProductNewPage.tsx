@@ -14,6 +14,7 @@ export function ProductNewPage() {
   const [variant, setVariant] = useState('');
   const [notes, setNotes] = useState('');
   const [initialStock, setInitialStock] = useState<string>('0');
+  const [price, setPrice] = useState<string>('');
   const [created, setCreated] = useState<Product | null>(null);
 
   const createProduct = useCreateProduct();
@@ -21,6 +22,7 @@ export function ProductNewPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const stockNum = Math.max(0, Math.trunc(Number(initialStock)) || 0);
+    const priceNum = Math.max(0, Number(price) || 0);
     try {
       const product = await createProduct.mutateAsync({
         code,
@@ -28,6 +30,7 @@ export function ProductNewPage() {
         variant,
         notes,
         initialStock: stockNum,
+        price: priceNum,
       });
       setCreated(product);
     } catch {
@@ -42,6 +45,7 @@ export function ProductNewPage() {
     setVariant('');
     setNotes('');
     setInitialStock('0');
+    setPrice('');
     createProduct.reset();
   }
 
@@ -107,6 +111,22 @@ export function ProductNewPage() {
             value={variant}
             onChange={(e) => setVariant(e.target.value)}
             placeholder="A / B / C…"
+            disabled={createProduct.isPending}
+          />
+        </Field>
+
+        <Field
+          label="Precio base (€/ud)"
+          hint="PVP de referencia. Se usará al vender y para el valor de almacén."
+        >
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="0,00"
             disabled={createProduct.isPending}
           />
         </Field>

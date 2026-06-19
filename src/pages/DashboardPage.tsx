@@ -1,9 +1,21 @@
-import { Boxes, Package, TriangleAlert, PackageX, TrendingDown, BarChart3 } from 'lucide-react';
+import {
+  Boxes,
+  Package,
+  TriangleAlert,
+  PackageX,
+  TrendingDown,
+  TrendingUp,
+  BarChart3,
+  Wallet,
+  Coins,
+} from 'lucide-react';
 import { useProductStats, type ProductStat } from '@/features/dashboard/useProductStats';
 import { useActivity } from '@/features/dashboard/useActivity';
+import { useMonthlySales } from '@/features/dashboard/useMonthlySales';
 import { LOW_STOCK_THRESHOLD } from '@/features/products/constants';
 import { PageHeader, Card, StatTile, StockBadge, Skeleton, EmptyState } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/lib/format';
 import { Link } from 'react-router-dom';
 
 function ActivityChart() {
@@ -77,18 +89,88 @@ function RankBars({ items, color }: { items: ProductStat[]; color: string }) {
   );
 }
 
+// Ranking de productos por ingresos por ventas.
+function RevenueBars({ items }: { items: ProductStat[] }) {
+  const max = Math.max(1, ...items.map((i) => i.total_revenue));
+  return (
+    <ul className="space-y-3">
+      {items.map((p) => (
+        <li key={p.id}>
+          <Link to={`/products/${p.id}`} className="block">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate text-sm font-medium">
+                {p.name}
+                {p.variant ? <span className="text-muted-foreground"> · {p.variant}</span> : null}
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums">
+                {formatMoney(p.total_revenue)}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <span
+                className="block h-full rounded-full bg-brand"
+                style={{ width: `${Math.round((p.total_revenue / max) * 100)}%` }}
+              />
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Resumen de ventas del mes en curso: unidades, ingresos y diferencia sobre el base.
+function MonthlySalesCard() {
+  const sales = useMonthlySales();
+  if (sales.isLoading) return <Skeleton className="h-[5.25rem] w-full" />;
+  const d = sales.data;
+  if (!d) return null;
+  const diffPositive = d.diff >= 0;
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <StatTile label="Uds vendidas" value={d.unitsSold} icon={Coins} />
+      <StatTile label="Ingresos" value={formatMoney(d.revenue)} icon={Wallet} />
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+        <span
+          className={cn(
+            'flex h-7 w-7 items-center justify-center rounded-lg',
+            diffPositive ? 'bg-ok/15 text-ok' : 'bg-destructive/15 text-destructive',
+          )}
+        >
+          <TrendingUp className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <p
+          className={cn(
+            'mt-2 font-display text-2xl font-semibold leading-none tabular-nums',
+            diffPositive ? 'text-ok' : 'text-destructive',
+          )}
+        >
+          {diffPositive ? '+' : ''}
+          {formatMoney(d.diff)}
+        </p>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">Sobre el base</p>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const stats = useProductStats();
   const data = stats.data ?? [];
 
   const totalProducts = data.length;
   const units = data.reduce((s, p) => s + p.stock, 0);
+  const warehouseValue = data.reduce((s, p) => s + p.stock * p.price, 0);
   const low = data.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).length;
   const out = data.filter((p) => p.stock <= 0).length;
 
   const topOut = [...data]
     .filter((p) => p.total_out > 0)
     .sort((a, b) => b.total_out - a.total_out)
+    .slice(0, 5);
+  const topRevenue = [...data]
+    .filter((p) => p.total_revenue > 0)
+    .sort((a, b) => b.total_revenue - a.total_revenue)
     .slice(0, 5);
   const lowest = [...data].sort((a, b) => a.stock - b.stock).slice(0, 5);
 
@@ -101,6 +183,7 @@ export function DashboardPage() {
         <div className="grid grid-cols-2 gap-3">
           <Skeleton className="h-[5.25rem]" />
           <Skeleton className="h-[5.25rem]" />
+          <Skeleton className="col-span-2 h-[5.25rem]" />
           <Skeleton className="h-[5.25rem]" />
           <Skeleton className="h-[5.25rem]" />
         </div>
@@ -108,6 +191,12 @@ export function DashboardPage() {
         <div className="grid grid-cols-2 gap-3">
           <StatTile label="Productos" value={totalProducts} icon={Package} />
           <StatTile label="Unidades en stock" value={units} icon={Boxes} />
+          <StatTile
+            label="Valor de almacén (a precio base)"
+            value={formatMoney(warehouseValue)}
+            icon={Wallet}
+            className="col-span-2"
+          />
           <StatTile
             label="Stock bajo"
             value={low}
@@ -122,6 +211,14 @@ export function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Ventas del mes */}
+      <section className="space-y-2.5">
+        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <Coins className="h-3.5 w-3.5" aria-hidden="true" /> Ventas de este mes
+        </h3>
+        <MonthlySalesCard />
+      </section>
 
       {/* Actividad 7 días */}
       <section className="space-y-2.5">
@@ -151,6 +248,28 @@ export function DashboardPage() {
             icon={TrendingDown}
             title="Sin salidas todavía"
             description="Aún no se ha retirado stock."
+          />
+        )}
+      </section>
+
+      {/* Ingresos por producto */}
+      <section className="space-y-2.5">
+        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Más ingresos
+        </h3>
+        {stats.isLoading ? (
+          <Card className="p-4">
+            <Skeleton className="h-24 w-full" />
+          </Card>
+        ) : topRevenue.length > 0 ? (
+          <Card className="p-4">
+            <RevenueBars items={topRevenue} />
+          </Card>
+        ) : (
+          <EmptyState
+            icon={TrendingUp}
+            title="Sin ventas todavía"
+            description="Cuando registres salidas con precio aparecerán aquí."
           />
         )}
       </section>

@@ -9,6 +9,8 @@ export interface UpdateProductInput {
   name: string;
   variant?: string | null;
   notes?: string | null;
+  /** Precio base (PVP de referencia) por unidad. */
+  price?: number;
 }
 
 export function useUpdateProduct() {
@@ -21,6 +23,10 @@ export function useUpdateProduct() {
       if (!code || !name) {
         throw new Error('El código y el nombre son obligatorios.');
       }
+      const price = input.price ?? 0;
+      if (price < 0) {
+        throw new Error('El precio no puede ser negativo.');
+      }
 
       const { data, error } = await supabase
         .from('products')
@@ -29,6 +35,7 @@ export function useUpdateProduct() {
           name,
           variant: input.variant?.trim() || null,
           notes: input.notes?.trim() || null,
+          price,
         })
         .eq('id', input.id)
         .select()
@@ -45,6 +52,7 @@ export function useUpdateProduct() {
     onSuccess: (data) => {
       queryClient.setQueryData(productKey(data.id), data);
       void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

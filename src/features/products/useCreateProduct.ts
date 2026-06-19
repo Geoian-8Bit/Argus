@@ -8,6 +8,8 @@ export interface CreateProductInput {
   variant?: string | null;
   notes?: string | null;
   initialStock?: number;
+  /** Precio base (PVP de referencia) por unidad. */
+  price?: number;
 }
 
 export type Product = Tables<'products'>;
@@ -22,6 +24,7 @@ export function useCreateProduct() {
       const variant = input.variant?.trim() || null;
       const notes = input.notes?.trim() || null;
       const initialStock = input.initialStock ?? 0;
+      const price = input.price ?? 0;
 
       if (!code || !name) {
         throw new Error('El código y el nombre son obligatorios.');
@@ -29,10 +32,13 @@ export function useCreateProduct() {
       if (initialStock < 0) {
         throw new Error('El stock inicial no puede ser negativo.');
       }
+      if (price < 0) {
+        throw new Error('El precio no puede ser negativo.');
+      }
 
       const { data: product, error } = await supabase
         .from('products')
-        .insert({ code, name, variant, notes })
+        .insert({ code, name, variant, notes, price })
         .select()
         .single();
 

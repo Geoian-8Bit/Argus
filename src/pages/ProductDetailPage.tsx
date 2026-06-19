@@ -27,6 +27,7 @@ export function ProductDetailPage() {
   const [name, setName] = useState('');
   const [variant, setVariant] = useState('');
   const [notes, setNotes] = useState('');
+  const [price, setPrice] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -38,6 +39,7 @@ export function ProductDetailPage() {
       setName(product.name);
       setVariant(product.variant ?? '');
       setNotes(product.notes ?? '');
+      setPrice(String(Number(product.price) || 0));
     }
   }, [product]);
 
@@ -68,14 +70,22 @@ export function ProductDetailPage() {
     code !== product.code ||
     name !== product.name ||
     variant !== (product.variant ?? '') ||
-    notes !== (product.notes ?? '');
+    notes !== (product.notes ?? '') ||
+    (Number(price) || 0) !== (Number(product.price) || 0);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!product) return;
     setSaved(false);
     try {
-      await updateProduct.mutateAsync({ id: product.id, code, name, variant, notes });
+      await updateProduct.mutateAsync({
+        id: product.id,
+        code,
+        name,
+        variant,
+        notes,
+        price: Math.max(0, Number(price) || 0),
+      });
       setSaved(true);
     } catch {
       // El error se muestra vía updateProduct.error
@@ -147,6 +157,21 @@ export function ProductDetailPage() {
                 setVariant(e.target.value);
                 setSaved(false);
               }}
+              disabled={updateProduct.isPending}
+            />
+          </Field>
+          <Field label="Precio base (€/ud)" hint="PVP de referencia para ventas y valor de almacén">
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                setSaved(false);
+              }}
+              placeholder="0,00"
               disabled={updateProduct.isPending}
             />
           </Field>

@@ -16,6 +16,7 @@ export type Database = {
           product_id: string;
           qty: number;
           type: Database['public']['Enums']['movement_type'];
+          unit_price: number | null;
           user_email: string | null;
           user_id: string | null;
         };
@@ -26,6 +27,7 @@ export type Database = {
           product_id: string;
           qty: number;
           type: Database['public']['Enums']['movement_type'];
+          unit_price?: number | null;
           user_email?: string | null;
           user_id?: string | null;
         };
@@ -36,6 +38,7 @@ export type Database = {
           product_id?: string;
           qty?: number;
           type?: Database['public']['Enums']['movement_type'];
+          unit_price?: number | null;
           user_email?: string | null;
           user_id?: string | null;
         };
@@ -57,6 +60,7 @@ export type Database = {
           id: string;
           name: string;
           notes: string | null;
+          price: number;
           stock: number;
           updated_at: string;
           variant: string | null;
@@ -68,6 +72,7 @@ export type Database = {
           id?: string;
           name: string;
           notes?: string | null;
+          price?: number;
           stock?: number;
           updated_at?: string;
           variant?: string | null;
@@ -79,6 +84,7 @@ export type Database = {
           id?: string;
           name?: string;
           notes?: string | null;
+          price?: number;
           stock?: number;
           updated_at?: string;
           variant?: string | null;
@@ -116,9 +122,11 @@ export type Database = {
           last_movement_at: string | null;
           movements_count: number | null;
           name: string | null;
+          price: number | null;
           stock: number | null;
           total_in: number | null;
           total_out: number | null;
+          total_revenue: number | null;
           variant: string | null;
         };
         Relationships: [];

@@ -20,7 +20,8 @@ export function useProducts(search = '') {
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);
-      return data ?? [];
+      // price es numeric en Postgres y viaja como string; lo normalizamos a number.
+      return (data ?? []).map((p) => ({ ...p, price: Number(p.price) || 0 }));
     },
   });
 }

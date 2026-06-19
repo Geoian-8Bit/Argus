@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowDownToLine,
@@ -21,6 +21,7 @@ import {
   StockBadge,
   Spinner,
 } from '@/components/ui';
+import { formatMoney } from '@/lib/format';
 
 type Action = 'in' | 'out';
 
@@ -36,6 +37,7 @@ export function ScanPage() {
 
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const [qty, setQty] = useState<string>('1');
+  const [salePrice, setSalePrice] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const productQuery = useProductByCode(scannedCode);
@@ -50,33 +52,48 @@ export function ScanPage() {
   const resetScan = useCallback(() => {
     setScannedCode(null);
     setQty('1');
+    setSalePrice('');
     registerMovement.reset();
   }, [registerMovement]);
+
+  const product = productQuery.data ?? null;
+
+  // Al cargar el producto en una salida, precargamos el precio de venta con el
+  // precio base; el usuario puede modificarlo antes de confirmar.
+  useEffect(() => {
+    if (product && action === 'out') {
+      setSalePrice(String(Number(product.price) || 0));
+    }
+  }, [product?.id, action]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!action) {
     return <Navigate to="/" replace />;
   }
 
   const labels = ACTION[action];
-  const product = productQuery.data ?? null;
   const showScanner = scannedCode === null;
   const qtyNum = Math.trunc(Number(qty));
   const qtyValid = Number.isFinite(qtyNum) && qtyNum >= 1;
+  const isSale = action === 'out';
+  const priceNum = Number(salePrice);
+  const priceValid = Number.isFinite(priceNum) && priceNum >= 0 && salePrice.trim() !== '';
+  const canConfirm = qtyValid && (!isSale || priceValid);
 
   async function handleConfirm() {
-    if (!product || !action || !qtyValid) return;
+    if (!product || !action || !canConfirm) return;
     try {
       await registerMovement.mutateAsync({
         productId: product.id,
         productCode: product.code,
         type: action,
         qty: qtyNum,
+        unitPrice: isSale ? priceNum : null,
       });
-      setSuccessMessage(
-        `${action === 'in' ? '+' : '−'}${qtyNum} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`,
-      );
+      const base = `${isSale ? '−' : '+'}${qtyNum} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`;
+      setSuccessMessage(isSale ? `${base} · ${formatMoney(priceNum * qtyNum)}` : base);
       setScannedCode(null);
       setQty('1');
+      setSalePrice('');
     } catch {
       // El error se muestra vía registerMovement.error
     }
@@ -133,6 +150,27 @@ export function ScanPage() {
             />
           </Field>
 
+          {isSale && (
+            <Field
+              label="Precio de venta (€/ud)"
+              hint={
+                priceValid
+                  ? `Total de la venta: ${formatMoney(priceNum * (qtyValid ? qtyNum : 0))}`
+                  : 'Indica el precio real por unidad.'
+              }
+            >
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+                placeholder="0,00"
+              />
+            </Field>
+          )}
+
           {registerMovement.isError && (
             <p className="text-sm text-destructive" role="alert">
               {registerMovement.error.message}
@@ -147,7 +185,7 @@ export function ScanPage() {
               variant={labels.variant}
               onClick={handleConfirm}
               loading={registerMovement.isPending}
-              disabled={!qtyValid}
+              disabled={!canConfirm}
             >
               {!registerMovement.isPending && (
                 <labels.Icon className="h-4 w-4" aria-hidden="true" />
