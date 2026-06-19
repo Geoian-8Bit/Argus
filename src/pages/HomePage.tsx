@@ -111,10 +111,10 @@ export function HomePage() {
                     icon={Package}
                   />
                   <StatTile
-                    label="Stock bajo"
+                    label="Quedan pocos"
                     value={lowStock}
                     icon={TriangleAlert}
-                    tone={lowStock > 0 ? 'warning' : 'default'}
+                    tone={lowStock > 0 ? 'destructive' : 'default'}
                   />
                   <StatTile label="Hoy" value={stats.data?.movementsToday ?? 0} icon={Activity} />
                 </>

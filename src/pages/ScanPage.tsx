@@ -137,7 +137,7 @@ export function ScanPage() {
                 {product.variant ? ` · ${product.variant}` : ''}
               </p>
             </div>
-            <StockBadge stock={product.stock} />
+            <StockBadge stock={product.stock} minStock={product.min_stock} />
           </div>
 
           <Field label="Cantidad">

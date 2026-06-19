@@ -28,6 +28,7 @@ export function ProductDetailPage() {
   const [variant, setVariant] = useState('');
   const [notes, setNotes] = useState('');
   const [price, setPrice] = useState('');
+  const [minStock, setMinStock] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -40,6 +41,7 @@ export function ProductDetailPage() {
       setVariant(product.variant ?? '');
       setNotes(product.notes ?? '');
       setPrice(String(Number(product.price) || 0));
+      setMinStock(String(product.min_stock ?? 0));
     }
   }, [product]);
 
@@ -71,7 +73,8 @@ export function ProductDetailPage() {
     name !== product.name ||
     variant !== (product.variant ?? '') ||
     notes !== (product.notes ?? '') ||
-    (Number(price) || 0) !== (Number(product.price) || 0);
+    (Number(price) || 0) !== (Number(product.price) || 0) ||
+    (Math.trunc(Number(minStock)) || 0) !== (product.min_stock ?? 0);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,6 +88,7 @@ export function ProductDetailPage() {
         variant,
         notes,
         price: Math.max(0, Number(price) || 0),
+        minStock: Math.max(0, Math.trunc(Number(minStock)) || 0),
       });
       setSaved(true);
     } catch {
@@ -172,6 +176,22 @@ export function ProductDetailPage() {
                 setSaved(false);
               }}
               placeholder="0,00"
+              disabled={updateProduct.isPending}
+            />
+          </Field>
+          <Field
+            label="Aviso de stock bajo (uds)"
+            hint="En rojo cuando queden estas unidades o menos"
+          >
+            <Input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={minStock}
+              onChange={(e) => {
+                setMinStock(e.target.value);
+                setSaved(false);
+              }}
               disabled={updateProduct.isPending}
             />
           </Field>

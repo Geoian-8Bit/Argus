@@ -1,27 +1,30 @@
 import { cn } from '@/lib/utils';
 import { stockStatus, type StockStatus } from '@/features/products/constants';
 
+// Bajo umbral = rojo (como agotado); por encima = verde.
 const DOT: Record<StockStatus, string> = {
   ok: 'bg-ok',
-  low: 'bg-warning',
+  low: 'bg-destructive',
   out: 'bg-destructive',
 };
 
 const SR_LABEL: Record<StockStatus, string> = {
   ok: 'en stock',
-  low: 'stock bajo',
+  low: 'quedan pocos',
   out: 'sin stock',
 };
 
 interface StockBadgeProps {
   stock: number;
+  /** Umbral de stock bajo del producto. Por defecto DEFAULT_MIN_STOCK. */
+  minStock?: number;
   className?: string;
 }
 
 // Chip con número de stock + punto de color según estado. El texto va en
 // `foreground` (alto contraste) y el color es solo refuerzo, no único indicador.
-export function StockBadge({ stock, className }: StockBadgeProps) {
-  const status = stockStatus(stock);
+export function StockBadge({ stock, minStock, className }: StockBadgeProps) {
+  const status = stockStatus(stock, minStock);
   return (
     <span
       className={cn(

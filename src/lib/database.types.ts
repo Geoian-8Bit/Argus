@@ -58,6 +58,7 @@ export type Database = {
           code: string;
           created_at: string;
           id: string;
+          min_stock: number;
           name: string;
           notes: string | null;
           price: number;
@@ -70,6 +71,7 @@ export type Database = {
           code: string;
           created_at?: string;
           id?: string;
+          min_stock?: number;
           name: string;
           notes?: string | null;
           price?: number;
@@ -82,6 +84,7 @@ export type Database = {
           code?: string;
           created_at?: string;
           id?: string;
+          min_stock?: number;
           name?: string;
           notes?: string | null;
           price?: number;
@@ -119,7 +122,9 @@ export type Database = {
           archived_at: string | null;
           code: string | null;
           id: string | null;
+          is_low: boolean | null;
           last_movement_at: string | null;
+          min_stock: number | null;
           movements_count: number | null;
           name: string | null;
           price: number | null;

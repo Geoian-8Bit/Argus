@@ -99,7 +99,7 @@ export function ProductsPage() {
                       <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
                     </div>
                     <div className="flex flex-col items-end gap-0.5">
-                      <StockBadge stock={p.stock} />
+                      <StockBadge stock={p.stock} minStock={p.min_stock} />
                       <span className="text-xs tabular-nums text-muted-foreground">
                         {formatMoney(p.stock * p.price)}
                       </span>

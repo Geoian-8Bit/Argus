@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { useCreateProduct, type Product } from '@/features/products/useCreateProduct';
+import { DEFAULT_MIN_STOCK } from '@/features/products/constants';
 import { QrPreview } from '@/features/products/QrPreview';
 import { PageHeader, Button, ButtonLink, Field, Input, Textarea } from '@/components/ui';
 
@@ -15,6 +16,7 @@ export function ProductNewPage() {
   const [notes, setNotes] = useState('');
   const [initialStock, setInitialStock] = useState<string>('0');
   const [price, setPrice] = useState<string>('');
+  const [minStock, setMinStock] = useState<string>(String(DEFAULT_MIN_STOCK));
   const [created, setCreated] = useState<Product | null>(null);
 
   const createProduct = useCreateProduct();
@@ -23,6 +25,7 @@ export function ProductNewPage() {
     event.preventDefault();
     const stockNum = Math.max(0, Math.trunc(Number(initialStock)) || 0);
     const priceNum = Math.max(0, Number(price) || 0);
+    const minStockNum = Math.max(0, Math.trunc(Number(minStock)) || 0);
     try {
       const product = await createProduct.mutateAsync({
         code,
@@ -31,6 +34,7 @@ export function ProductNewPage() {
         notes,
         initialStock: stockNum,
         price: priceNum,
+        minStock: minStockNum,
       });
       setCreated(product);
     } catch {
@@ -46,6 +50,7 @@ export function ProductNewPage() {
     setNotes('');
     setInitialStock('0');
     setPrice('');
+    setMinStock(String(DEFAULT_MIN_STOCK));
     createProduct.reset();
   }
 
@@ -138,6 +143,20 @@ export function ProductNewPage() {
             inputMode="numeric"
             value={initialStock}
             onChange={(e) => setInitialStock(e.target.value)}
+            disabled={createProduct.isPending}
+          />
+        </Field>
+
+        <Field
+          label="Aviso de stock bajo (uds)"
+          hint="Se marcará en rojo cuando queden estas unidades o menos."
+        >
+          <Input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={minStock}
+            onChange={(e) => setMinStock(e.target.value)}
             disabled={createProduct.isPending}
           />
         </Field>

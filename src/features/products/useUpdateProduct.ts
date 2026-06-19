@@ -11,6 +11,8 @@ export interface UpdateProductInput {
   notes?: string | null;
   /** Precio base (PVP de referencia) por unidad. */
   price?: number;
+  /** Umbral de stock bajo. */
+  minStock?: number;
 }
 
 export function useUpdateProduct() {
@@ -27,6 +29,10 @@ export function useUpdateProduct() {
       if (price < 0) {
         throw new Error('El precio no puede ser negativo.');
       }
+      const minStock = input.minStock ?? 0;
+      if (minStock < 0) {
+        throw new Error('El umbral de stock no puede ser negativo.');
+      }
 
       const { data, error } = await supabase
         .from('products')
@@ -36,6 +42,7 @@ export function useUpdateProduct() {
           variant: input.variant?.trim() || null,
           notes: input.notes?.trim() || null,
           price,
+          min_stock: minStock,
         })
         .eq('id', input.id)
         .select()

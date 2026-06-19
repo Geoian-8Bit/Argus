@@ -16,7 +16,6 @@ import { useProductStats, type ProductStat } from '@/features/dashboard/useProdu
 import { useActivity } from '@/features/dashboard/useActivity';
 import { useSales } from '@/features/dashboard/useSales';
 import { periodRange, GRANULARITIES, type Granularity } from '@/features/dashboard/period';
-import { LOW_STOCK_THRESHOLD } from '@/features/products/constants';
 import {
   PageHeader,
   Card,
@@ -244,11 +243,12 @@ export function DashboardPage() {
   const totalProducts = data.length;
   const units = data.reduce((s, p) => s + p.stock, 0);
   const warehouseValue = data.reduce((s, p) => s + p.stock * p.price, 0);
-  const low = data.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).length;
+  // Bajo umbral según el min_stock de cada producto.
+  const low = data.filter((p) => p.stock > 0 && p.stock <= p.min_stock).length;
   const out = data.filter((p) => p.stock <= 0).length;
-  // Solo productos con stock; los agotados ya tienen su propio KPI.
-  const lowest = [...data]
-    .filter((p) => p.stock > 0)
+  // Productos a reponer: en o por debajo de su umbral (incluye agotados), más urgentes primero.
+  const toRestock = [...data]
+    .filter((p) => p.stock <= p.min_stock)
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 5);
 
@@ -314,25 +314,25 @@ export function DashboardPage() {
                   className="col-span-2"
                 />
                 <StatTile
-                  label="Stock bajo"
+                  label="Quedan pocos"
                   value={low}
                   icon={TriangleAlert}
-                  tone={low > 0 ? 'warning' : 'default'}
+                  tone={low > 0 ? 'destructive' : 'default'}
                 />
                 <StatTile
                   label="Agotados"
                   value={out}
                   icon={PackageX}
-                  tone={out > 0 ? 'warning' : 'default'}
+                  tone={out > 0 ? 'destructive' : 'default'}
                 />
               </div>
 
               <section className="space-y-2.5">
-                <SectionTitle>Quedan menos</SectionTitle>
-                {lowest.length > 0 ? (
+                <SectionTitle icon={TriangleAlert}>Por reponer</SectionTitle>
+                {toRestock.length > 0 ? (
                   <Card>
                     <ul className="divide-y divide-border px-4">
-                      {lowest.map((p) => (
+                      {toRestock.map((p) => (
                         <li key={p.id}>
                           <Link
                             to={`/products/${p.id}`}
@@ -349,7 +349,7 @@ export function DashboardPage() {
                                 {p.code}
                               </p>
                             </div>
-                            <StockBadge stock={p.stock} />
+                            <StockBadge stock={p.stock} minStock={p.min_stock} />
                           </Link>
                         </li>
                       ))}
@@ -358,8 +358,8 @@ export function DashboardPage() {
                 ) : (
                   <EmptyState
                     icon={Package}
-                    title="Sin productos"
-                    description="Crea productos para ver métricas."
+                    title="Todo con stock suficiente"
+                    description="Ningún producto está en o por debajo de su umbral."
                   />
                 )}
               </section>

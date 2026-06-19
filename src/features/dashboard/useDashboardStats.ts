@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { LOW_STOCK_THRESHOLD } from '@/features/products/constants';
 
 export interface DashboardStats {
   totalProducts: number;
@@ -18,11 +17,12 @@ export function useDashboardStats() {
 
       const [total, low, today] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact', head: true }),
+        // Bajo umbral según el min_stock de cada producto (flag is_low de la vista).
         supabase
-          .from('products')
+          .from('product_stats')
           .select('*', { count: 'exact', head: true })
-          .gt('stock', 0)
-          .lte('stock', LOW_STOCK_THRESHOLD),
+          .is('archived_at', null)
+          .eq('is_low', true),
         supabase
           .from('movements')
           .select('*', { count: 'exact', head: true })
