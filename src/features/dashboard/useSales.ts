@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import type { Period } from './period';
 
-export interface MonthlySales {
-  /** Unidades vendidas (salidas con precio registrado) en el mes en curso. */
+export interface SalesSummary {
+  /** Unidades vendidas (salidas con precio registrado) en el periodo. */
   unitsSold: number;
   /** Ingresos: Σ precio_venta × cantidad. */
   revenue: number;
@@ -10,29 +11,25 @@ export interface MonthlySales {
   baseTotal: number;
   /** Diferencia sobre el precio base: ingresos − baseTotal. */
   diff: number;
-  /** Mes en curso, legible (p. ej. "junio"). */
-  monthLabel: string;
 }
 
-const monthFmt = new Intl.DateTimeFormat('es', { month: 'long' });
-
-// Ventas del mes en curso. Solo cuentan las salidas con precio de venta
+// Ventas dentro de un periodo. Solo cuentan las salidas con precio de venta
 // registrado (`unit_price`); las salidas antiguas sin precio quedan fuera.
-export function useMonthlySales() {
-  return useQuery({
-    queryKey: ['dashboard', 'monthly-sales'],
-    queryFn: async (): Promise<MonthlySales> => {
-      const start = new Date();
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
+export function useSales(period: Period) {
+  const startISO = period.start.toISOString();
+  const endISO = period.end.toISOString();
 
+  return useQuery({
+    queryKey: ['dashboard', 'sales', startISO, endISO],
+    queryFn: async (): Promise<SalesSummary> => {
       const [sales, products] = await Promise.all([
         supabase
           .from('movements')
           .select('qty,unit_price,product_id')
           .eq('type', 'out')
           .not('unit_price', 'is', null)
-          .gte('created_at', start.toISOString()),
+          .gte('created_at', startISO)
+          .lt('created_at', endISO),
         supabase.from('products').select('id,price'),
       ]);
       if (sales.error) throw new Error(sales.error.message);
@@ -50,13 +47,7 @@ export function useMonthlySales() {
         baseTotal += (basePriceById.get(m.product_id) ?? 0) * qty;
       }
 
-      return {
-        unitsSold,
-        revenue,
-        baseTotal,
-        diff: revenue - baseTotal,
-        monthLabel: monthFmt.format(start),
-      };
+      return { unitsSold, revenue, baseTotal, diff: revenue - baseTotal };
     },
   });
 }

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
   Boxes,
   Package,
@@ -8,12 +9,23 @@ import {
   BarChart3,
   Wallet,
   Coins,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useProductStats, type ProductStat } from '@/features/dashboard/useProductStats';
 import { useActivity } from '@/features/dashboard/useActivity';
-import { useMonthlySales } from '@/features/dashboard/useMonthlySales';
+import { useSales } from '@/features/dashboard/useSales';
+import { periodRange, GRANULARITIES, type Granularity } from '@/features/dashboard/period';
 import { LOW_STOCK_THRESHOLD } from '@/features/products/constants';
-import { PageHeader, Card, StatTile, StockBadge, Skeleton, EmptyState } from '@/components/ui';
+import {
+  PageHeader,
+  Card,
+  StatTile,
+  StockBadge,
+  Skeleton,
+  EmptyState,
+  IconButton,
+} from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { Link } from 'react-router-dom';
@@ -119,37 +131,91 @@ function RevenueBars({ items }: { items: ProductStat[] }) {
   );
 }
 
-// Resumen de ventas del mes en curso: unidades, ingresos y diferencia sobre el base.
-function MonthlySalesCard() {
-  const sales = useMonthlySales();
-  if (sales.isLoading) return <Skeleton className="h-[5.25rem] w-full" />;
+// Ventas de un periodo elegible (semana/mes/trimestre/año) con navegación.
+function PeriodSales() {
+  const [granularity, setGranularity] = useState<Granularity>('month');
+  const [offset, setOffset] = useState(0);
+  const period = useMemo(() => periodRange(granularity, offset), [granularity, offset]);
+  const sales = useSales(period);
   const d = sales.data;
-  if (!d) return null;
-  const diffPositive = d.diff >= 0;
+  const diffPositive = (d?.diff ?? 0) >= 0;
+
+  function changeGranularity(next: Granularity) {
+    setGranularity(next);
+    setOffset(0); // Al cambiar de escala, volvemos al periodo actual.
+  }
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <StatTile label="Uds vendidas" value={d.unitsSold} icon={Coins} />
-      <StatTile label="Ingresos" value={formatMoney(d.revenue)} icon={Wallet} />
-      <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-        <span
-          className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-lg',
-            diffPositive ? 'bg-ok/15 text-ok' : 'bg-destructive/15 text-destructive',
-          )}
-        >
-          <TrendingUp className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <p
-          className={cn(
-            'mt-2 font-display text-2xl font-semibold leading-none tabular-nums',
-            diffPositive ? 'text-ok' : 'text-destructive',
-          )}
-        >
-          {diffPositive ? '+' : ''}
-          {formatMoney(d.diff)}
-        </p>
-        <p className="mt-1 text-xs font-medium text-muted-foreground">Sobre el base</p>
+    <div className="space-y-3">
+      <div
+        role="tablist"
+        aria-label="Escala de tiempo"
+        className="flex gap-1 rounded-lg bg-muted p-1"
+      >
+        {GRANULARITIES.map((g) => {
+          const active = granularity === g.value;
+          return (
+            <button
+              key={g.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => changeGranularity(g.value)}
+              className={cn(
+                'flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {g.label}
+            </button>
+          );
+        })}
       </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <IconButton aria-label="Periodo anterior" onClick={() => setOffset((o) => o - 1)}>
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+        </IconButton>
+        <span className="text-sm font-semibold capitalize tabular-nums">{period.label}</span>
+        <IconButton
+          aria-label="Periodo siguiente"
+          disabled={offset >= 0}
+          onClick={() => setOffset((o) => Math.min(0, o + 1))}
+        >
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+        </IconButton>
+      </div>
+
+      {sales.isLoading ? (
+        <Skeleton className="h-[5.25rem] w-full" />
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <StatTile label="Uds vendidas" value={d?.unitsSold ?? 0} icon={Coins} />
+          <StatTile label="Ingresos" value={formatMoney(d?.revenue ?? 0)} icon={Wallet} />
+          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+            <span
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-lg',
+                diffPositive ? 'bg-ok/15 text-ok' : 'bg-destructive/15 text-destructive',
+              )}
+            >
+              <TrendingUp className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <p
+              className={cn(
+                'mt-2 font-display text-2xl font-semibold leading-none tabular-nums',
+                diffPositive ? 'text-ok' : 'text-destructive',
+              )}
+            >
+              {diffPositive ? '+' : ''}
+              {formatMoney(d?.diff ?? 0)}
+            </p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">Sobre el base</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -212,12 +278,12 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Ventas del mes */}
+      {/* Ventas por periodo */}
       <section className="space-y-2.5">
         <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <Coins className="h-3.5 w-3.5" aria-hidden="true" /> Ventas de este mes
+          <Coins className="h-3.5 w-3.5" aria-hidden="true" /> Ventas
         </h3>
-        <MonthlySalesCard />
+        <PeriodSales />
       </section>
 
       {/* Actividad 7 días */}
