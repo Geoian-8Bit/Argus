@@ -8,7 +8,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt', 'icons/*.png'],
+      includeAssets: [
+        'robots.txt',
+        'favicon-32.png',
+        'apple-touch-icon.png',
+        'argus-symbol.png',
+        'argus-logo.png',
+        'icons/*.png',
+      ],
       manifest: {
         name: 'Argus',
         short_name: 'Argus',

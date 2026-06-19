@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { ArgusMark } from './ArgusMark';
 
 interface WordmarkProps {
   className?: string;
@@ -11,7 +10,7 @@ export function Wordmark({ className, as = 'div' }: WordmarkProps) {
   const Tag = as;
   return (
     <Tag className={cn('flex items-center gap-2', className)}>
-      <ArgusMark className="h-6 w-6 text-brand" />
+      <img src="/argus-symbol.png" alt="" className="h-6 w-auto" />
       <span className="font-display text-lg font-semibold tracking-tight text-foreground">
         Argus
       </span>
