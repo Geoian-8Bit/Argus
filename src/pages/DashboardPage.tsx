@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Boxes,
   Package,
   TriangleAlert,
   PackageX,
-  TrendingDown,
   TrendingUp,
   BarChart3,
   Wallet,
   Coins,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react';
 import { useProductStats, type ProductStat } from '@/features/dashboard/useProductStats';
 import { useActivity } from '@/features/dashboard/useActivity';
@@ -25,14 +25,41 @@ import {
   Skeleton,
   EmptyState,
   IconButton,
+  Button,
+  Segmented,
 } from '@/components/ui';
-import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { Link } from 'react-router-dom';
+
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <EmptyState
+      icon={TriangleAlert}
+      title="No se pudo cargar"
+      description="Revisa tu conexión e inténtalo de nuevo."
+      action={
+        <Button variant="outline" size="sm" className="w-auto" onClick={onRetry}>
+          Reintentar
+        </Button>
+      }
+    />
+  );
+}
+
+function SectionTitle({ icon: Icon, children }: { icon?: LucideIcon; children: ReactNode }) {
+  return (
+    <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+      {children}
+    </h3>
+  );
+}
 
 function ActivityChart() {
   const activity = useActivity(7);
   if (activity.isLoading) return <Skeleton className="h-32 w-full" />;
+  if (activity.isError) return <LoadError onRetry={() => void activity.refetch()} />;
+
   const days = activity.data ?? [];
   const max = Math.max(1, ...days.flatMap((d) => [d.inQty, d.outQty]));
   const totalIn = days.reduce((s, d) => s + d.inQty, 0);
@@ -53,7 +80,7 @@ function ActivityChart() {
       </div>
       <div className="flex h-28 items-end justify-between gap-1.5">
         {days.map((d) => (
-          <div key={d.key} className="flex flex-1 flex-col items-center gap-1.5">
+          <div key={d.key} className="flex flex-1 flex-col items-center gap-1">
             <div className="flex h-[88px] items-end justify-center gap-1">
               <span
                 className="w-2.5 rounded-t bg-ok"
@@ -66,7 +93,10 @@ function ActivityChart() {
                 title={`Salidas: ${d.outQty}`}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground">{d.label}</span>
+            <span className="text-[10px] leading-tight text-muted-foreground">{d.label}</span>
+            <span className="text-[10px] leading-none tabular-nums text-muted-foreground/70">
+              {d.dayOfMonth}
+            </span>
           </div>
         ))}
       </div>
@@ -74,60 +104,76 @@ function ActivityChart() {
   );
 }
 
-function RankBars({ items, color }: { items: ProductStat[]; color: string }) {
-  const max = Math.max(1, ...items.map((i) => i.total_out));
-  return (
-    <ul className="space-y-3">
-      {items.map((p) => (
-        <li key={p.id}>
-          <Link to={`/products/${p.id}`} className="block">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-sm font-medium">
-                {p.name}
-                {p.variant ? <span className="text-muted-foreground"> · {p.variant}</span> : null}
-              </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums">{p.total_out}</span>
-            </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <span
-                className={cn('block h-full rounded-full', color)}
-                style={{ width: `${Math.round((p.total_out / max) * 100)}%` }}
-              />
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
+type RankMetric = 'revenue' | 'units';
 
-// Ranking de productos por ingresos por ventas.
-function RevenueBars({ items }: { items: ProductStat[] }) {
-  const max = Math.max(1, ...items.map((i) => i.total_revenue));
+// Ranking único de productos con conmutador Unidades / Ingresos.
+// La métrica activa se dibuja como barra; la otra acompaña en texto pequeño.
+function TopProducts({ data }: { data: ProductStat[] }) {
+  const [metric, setMetric] = useState<RankMetric>('revenue');
+  const isRevenue = metric === 'revenue';
+
+  const value = (p: ProductStat) => (isRevenue ? p.total_revenue : p.total_out);
+  const ranked = [...data]
+    .filter((p) => value(p) > 0)
+    .sort((a, b) => value(b) - value(a))
+    .slice(0, 5);
+  const max = Math.max(1, ...ranked.map(value));
+
   return (
-    <ul className="space-y-3">
-      {items.map((p) => (
-        <li key={p.id}>
-          <Link to={`/products/${p.id}`} className="block">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-sm font-medium">
-                {p.name}
-                {p.variant ? <span className="text-muted-foreground"> · {p.variant}</span> : null}
-              </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums">
-                {formatMoney(p.total_revenue)}
-              </span>
-            </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <span
-                className="block h-full rounded-full bg-brand"
-                style={{ width: `${Math.round((p.total_revenue / max) * 100)}%` }}
-              />
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <Segmented
+        ariaLabel="Métrica del ranking"
+        size="sm"
+        value={metric}
+        onChange={setMetric}
+        options={[
+          { value: 'revenue', label: 'Ingresos' },
+          { value: 'units', label: 'Unidades' },
+        ]}
+      />
+      {ranked.length > 0 ? (
+        <Card className="p-4">
+          <ul className="space-y-3">
+            {ranked.map((p) => {
+              const primary = isRevenue ? formatMoney(p.total_revenue) : `${p.total_out} uds`;
+              const secondary = isRevenue ? `${p.total_out} uds` : formatMoney(p.total_revenue);
+              return (
+                <li key={p.id}>
+                  <Link to={`/products/${p.id}`} className="block">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {p.name}
+                        {p.variant ? (
+                          <span className="text-muted-foreground"> · {p.variant}</span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">{primary}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-brand"
+                          style={{ width: `${Math.round((value(p) / max) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {secondary}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : (
+        <EmptyState
+          icon={TrendingUp}
+          title="Sin ventas todavía"
+          description="Cuando registres salidas con precio aparecerán aquí."
+        />
+      )}
+    </div>
   );
 }
 
@@ -147,32 +193,12 @@ function PeriodSales() {
 
   return (
     <div className="space-y-3">
-      <div
-        role="tablist"
-        aria-label="Escala de tiempo"
-        className="flex gap-1 rounded-lg bg-muted p-1"
-      >
-        {GRANULARITIES.map((g) => {
-          const active = granularity === g.value;
-          return (
-            <button
-              key={g.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => changeGranularity(g.value)}
-              className={cn(
-                'flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                active
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {g.label}
-            </button>
-          );
-        })}
-      </div>
+      <Segmented
+        ariaLabel="Escala de tiempo"
+        value={granularity}
+        onChange={changeGranularity}
+        options={GRANULARITIES}
+      />
 
       <div className="flex items-center justify-between gap-2">
         <IconButton aria-label="Periodo anterior" onClick={() => setOffset((o) => o - 1)}>
@@ -190,37 +216,28 @@ function PeriodSales() {
 
       {sales.isLoading ? (
         <Skeleton className="h-[5.25rem] w-full" />
+      ) : sales.isError ? (
+        <LoadError onRetry={() => void sales.refetch()} />
       ) : (
         <div className="grid grid-cols-3 gap-3">
           <StatTile label="Uds vendidas" value={d?.unitsSold ?? 0} icon={Coins} />
           <StatTile label="Ingresos" value={formatMoney(d?.revenue ?? 0)} icon={Wallet} />
-          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-            <span
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg',
-                diffPositive ? 'bg-ok/15 text-ok' : 'bg-destructive/15 text-destructive',
-              )}
-            >
-              <TrendingUp className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <p
-              className={cn(
-                'mt-2 font-display text-2xl font-semibold leading-none tabular-nums',
-                diffPositive ? 'text-ok' : 'text-destructive',
-              )}
-            >
-              {diffPositive ? '+' : ''}
-              {formatMoney(d?.diff ?? 0)}
-            </p>
-            <p className="mt-1 text-xs font-medium text-muted-foreground">Sobre el base</p>
-          </div>
+          <StatTile
+            label="Margen vs. PVP"
+            value={`${diffPositive ? '+' : ''}${formatMoney(d?.diff ?? 0)}`}
+            icon={TrendingUp}
+            tone={diffPositive ? 'ok' : 'destructive'}
+          />
         </div>
       )}
     </div>
   );
 }
 
+type DashboardTab = 'sales' | 'inventory';
+
 export function DashboardPage() {
+  const [tab, setTab] = useState<DashboardTab>('sales');
   const stats = useProductStats();
   const data = stats.data ?? [];
 
@@ -229,158 +246,127 @@ export function DashboardPage() {
   const warehouseValue = data.reduce((s, p) => s + p.stock * p.price, 0);
   const low = data.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD).length;
   const out = data.filter((p) => p.stock <= 0).length;
-
-  const topOut = [...data]
-    .filter((p) => p.total_out > 0)
-    .sort((a, b) => b.total_out - a.total_out)
+  // Solo productos con stock; los agotados ya tienen su propio KPI.
+  const lowest = [...data]
+    .filter((p) => p.stock > 0)
+    .sort((a, b) => a.stock - b.stock)
     .slice(0, 5);
-  const topRevenue = [...data]
-    .filter((p) => p.total_revenue > 0)
-    .sort((a, b) => b.total_revenue - a.total_revenue)
-    .slice(0, 5);
-  const lowest = [...data].sort((a, b) => a.stock - b.stock).slice(0, 5);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Panel" subtitle="Métricas del inventario y de la actividad." />
+    <div className="space-y-5">
+      <PageHeader title="Panel" subtitle="Inventario y ventas de un vistazo." />
 
-      {/* KPIs */}
-      {stats.isLoading ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-[5.25rem]" />
-          <Skeleton className="h-[5.25rem]" />
-          <Skeleton className="col-span-2 h-[5.25rem]" />
-          <Skeleton className="h-[5.25rem]" />
-          <Skeleton className="h-[5.25rem]" />
+      <Segmented
+        ariaLabel="Vista del panel"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'sales', label: 'Ventas' },
+          { value: 'inventory', label: 'Inventario' },
+        ]}
+      />
+
+      {tab === 'sales' ? (
+        <div className="space-y-6">
+          <PeriodSales />
+
+          <section className="space-y-2.5">
+            <SectionTitle icon={BarChart3}>Actividad (7 días)</SectionTitle>
+            <Card className="p-4">
+              <ActivityChart />
+            </Card>
+          </section>
+
+          <section className="space-y-2.5">
+            <SectionTitle icon={TrendingUp}>Top productos</SectionTitle>
+            {stats.isLoading ? (
+              <Card className="p-4">
+                <Skeleton className="h-24 w-full" />
+              </Card>
+            ) : stats.isError ? (
+              <LoadError onRetry={() => void stats.refetch()} />
+            ) : (
+              <TopProducts data={data} />
+            )}
+          </section>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <StatTile label="Productos" value={totalProducts} icon={Package} />
-          <StatTile label="Unidades en stock" value={units} icon={Boxes} />
-          <StatTile
-            label="Valor de almacén (a precio base)"
-            value={formatMoney(warehouseValue)}
-            icon={Wallet}
-            className="col-span-2"
-          />
-          <StatTile
-            label="Stock bajo"
-            value={low}
-            icon={TriangleAlert}
-            tone={low > 0 ? 'warning' : 'default'}
-          />
-          <StatTile
-            label="Agotados"
-            value={out}
-            icon={PackageX}
-            tone={out > 0 ? 'warning' : 'default'}
-          />
+        <div className="space-y-6">
+          {stats.isLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-[5.25rem]" />
+              <Skeleton className="h-[5.25rem]" />
+              <Skeleton className="col-span-2 h-[5.25rem]" />
+              <Skeleton className="h-[5.25rem]" />
+              <Skeleton className="h-[5.25rem]" />
+            </div>
+          ) : stats.isError ? (
+            <LoadError onRetry={() => void stats.refetch()} />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <StatTile label="Productos" value={totalProducts} icon={Package} />
+                <StatTile label="Unidades en stock" value={units} icon={Boxes} />
+                <StatTile
+                  label="Valor de almacén (a PVP)"
+                  value={formatMoney(warehouseValue)}
+                  icon={Wallet}
+                  className="col-span-2"
+                />
+                <StatTile
+                  label="Stock bajo"
+                  value={low}
+                  icon={TriangleAlert}
+                  tone={low > 0 ? 'warning' : 'default'}
+                />
+                <StatTile
+                  label="Agotados"
+                  value={out}
+                  icon={PackageX}
+                  tone={out > 0 ? 'warning' : 'default'}
+                />
+              </div>
+
+              <section className="space-y-2.5">
+                <SectionTitle>Quedan menos</SectionTitle>
+                {lowest.length > 0 ? (
+                  <Card>
+                    <ul className="divide-y divide-border px-4">
+                      {lowest.map((p) => (
+                        <li key={p.id}>
+                          <Link
+                            to={`/products/${p.id}`}
+                            className="flex items-center gap-3 py-3 transition-colors hover:opacity-80"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {p.name}
+                                {p.variant ? (
+                                  <span className="text-muted-foreground"> · {p.variant}</span>
+                                ) : null}
+                              </p>
+                              <p className="truncate font-mono text-xs text-muted-foreground">
+                                {p.code}
+                              </p>
+                            </div>
+                            <StockBadge stock={p.stock} />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                ) : (
+                  <EmptyState
+                    icon={Package}
+                    title="Sin productos"
+                    description="Crea productos para ver métricas."
+                  />
+                )}
+              </section>
+            </>
+          )}
         </div>
       )}
-
-      {/* Ventas por periodo */}
-      <section className="space-y-2.5">
-        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <Coins className="h-3.5 w-3.5" aria-hidden="true" /> Ventas
-        </h3>
-        <PeriodSales />
-      </section>
-
-      {/* Actividad 7 días */}
-      <section className="space-y-2.5">
-        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> Actividad (7 días)
-        </h3>
-        <Card className="p-4">
-          <ActivityChart />
-        </Card>
-      </section>
-
-      {/* Más salidas */}
-      <section className="space-y-2.5">
-        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" /> Lo que más sale
-        </h3>
-        {stats.isLoading ? (
-          <Card className="p-4">
-            <Skeleton className="h-24 w-full" />
-          </Card>
-        ) : topOut.length > 0 ? (
-          <Card className="p-4">
-            <RankBars items={topOut} color="bg-destructive" />
-          </Card>
-        ) : (
-          <EmptyState
-            icon={TrendingDown}
-            title="Sin salidas todavía"
-            description="Aún no se ha retirado stock."
-          />
-        )}
-      </section>
-
-      {/* Ingresos por producto */}
-      <section className="space-y-2.5">
-        <h3 className="flex items-center gap-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Más ingresos
-        </h3>
-        {stats.isLoading ? (
-          <Card className="p-4">
-            <Skeleton className="h-24 w-full" />
-          </Card>
-        ) : topRevenue.length > 0 ? (
-          <Card className="p-4">
-            <RevenueBars items={topRevenue} />
-          </Card>
-        ) : (
-          <EmptyState
-            icon={TrendingUp}
-            title="Sin ventas todavía"
-            description="Cuando registres salidas con precio aparecerán aquí."
-          />
-        )}
-      </section>
-
-      {/* Quedan menos */}
-      <section className="space-y-2.5">
-        <h3 className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Quedan menos
-        </h3>
-        {stats.isLoading ? (
-          <Card className="p-4">
-            <Skeleton className="h-24 w-full" />
-          </Card>
-        ) : lowest.length > 0 ? (
-          <Card>
-            <ul className="divide-y divide-border px-4">
-              {lowest.map((p) => (
-                <li key={p.id}>
-                  <Link
-                    to={`/products/${p.id}`}
-                    className="flex items-center gap-3 py-3 transition-colors hover:opacity-80"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {p.name}
-                        {p.variant ? (
-                          <span className="text-muted-foreground"> · {p.variant}</span>
-                        ) : null}
-                      </p>
-                      <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
-                    </div>
-                    <StockBadge stock={p.stock} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : (
-          <EmptyState
-            icon={Package}
-            title="Sin productos"
-            description="Crea productos para ver métricas."
-          />
-        )}
-      </section>
     </div>
   );
 }

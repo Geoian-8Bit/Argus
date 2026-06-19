@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 export interface ActivityDay {
   key: string;
   label: string;
+  /** Día del mes (1-31), para desambiguar días con la misma inicial. */
+  dayOfMonth: number;
   inQty: number;
   outQty: number;
 }
@@ -32,7 +34,13 @@ export function useActivity(days = 7) {
         const d = new Date(since);
         d.setDate(since.getDate() + i);
         const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-        const day: ActivityDay = { key, label: WEEKDAYS[d.getDay()], inQty: 0, outQty: 0 };
+        const day: ActivityDay = {
+          key,
+          label: WEEKDAYS[d.getDay()],
+          dayOfMonth: d.getDate(),
+          inQty: 0,
+          outQty: 0,
+        };
         buckets.push(day);
         index.set(key, day);
       }

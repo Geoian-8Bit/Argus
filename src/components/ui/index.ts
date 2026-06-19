@@ -13,4 +13,6 @@ export { EmptyState } from './EmptyState';
 export { Spinner } from './Spinner';
 export { Skeleton } from './Skeleton';
 export { StatTile } from './StatTile';
+export { Segmented } from './Segmented';
+export type { SegmentedOption } from './Segmented';
 export { PageHeader } from './PageHeader';
