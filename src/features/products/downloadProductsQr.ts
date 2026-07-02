@@ -1,11 +1,14 @@
 import { supabase } from '@/lib/supabase';
-import { generateProductsQrPdf } from '@/lib/qrPdf';
+import { generateProductsQrPdf, type QrPdfProgress } from '@/lib/qrPdf';
 
 /**
  * Genera y descarga un PDF con el QR de todos los productos activos
  * (no archivados), ordenados por código. Devuelve cuántos se exportaron.
+ * `onProgress` permite mostrar una barra de progreso durante la generación.
  */
-export async function downloadAllProductsQrPdf(): Promise<number> {
+export async function downloadAllProductsQrPdf(
+  onProgress?: (progress: QrPdfProgress) => void,
+): Promise<number> {
   const { data, error } = await supabase
     .from('products')
     .select('code')
@@ -18,6 +21,6 @@ export async function downloadAllProductsQrPdf(): Promise<number> {
     throw new Error('No hay productos activos para exportar.');
   }
 
-  await generateProductsQrPdf(items);
+  await generateProductsQrPdf(items, { onProgress });
   return items.length;
 }

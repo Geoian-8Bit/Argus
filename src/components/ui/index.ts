@@ -16,3 +16,4 @@ export { StatTile } from './StatTile';
 export { Segmented } from './Segmented';
 export type { SegmentedOption } from './Segmented';
 export { PageHeader } from './PageHeader';
+export { ProgressModal } from './ProgressModal';

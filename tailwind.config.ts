@@ -77,6 +77,35 @@ const config: Config = {
       transitionTimingFunction: {
         out: 'var(--ease-out)',
       },
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        'modal-in': {
+          from: { opacity: '0', transform: 'translateY(10px) scale(0.97)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'progress-stripes': {
+          from: { backgroundPosition: '1rem 0' },
+          to: { backgroundPosition: '0 0' },
+        },
+        'progress-shimmer': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '0.9' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.2s ease-out',
+        'modal-in': 'modal-in 0.28s var(--ease-out)',
+        'progress-stripes': 'progress-stripes 0.7s linear infinite',
+        'progress-shimmer': 'progress-shimmer 1.5s ease-in-out infinite',
+        'pulse-glow': 'pulse-glow 1.6s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

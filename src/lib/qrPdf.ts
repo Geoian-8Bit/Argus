@@ -42,18 +42,43 @@ const QR_PX = 512; // resolución del PNG del QR (nítido al imprimir a ~55 mm)
 const LABEL_GAP = 5; // mm entre el QR y el código
 const LABEL_HEIGHT = 4; // mm reservados para el texto del código
 const QR_FILL = 0.82; // proporción del ancho de celda que ocupa el QR
+const QR_SHARE = 0.9; // fracción del progreso dedicada a generar los QR (el resto, componer)
+
+export type QrPdfPhase = 'qr' | 'compose';
+
+export interface QrPdfProgress {
+  /** Elementos procesados en la fase actual. */
+  done: number;
+  total: number;
+  /** Progreso global de 0 a 1 (incluye la fase de composición). */
+  ratio: number;
+  phase: QrPdfPhase;
+}
+
+export interface GenerateQrPdfOptions {
+  layout?: QrGridLayout;
+  filename?: string;
+  onProgress?: (progress: QrPdfProgress) => void;
+}
+
+// Cede el hilo un macrotask para que el navegador repinte la barra de progreso.
+const yieldToBrowser = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /**
  * Genera un PDF A4 con el QR de cada elemento en rejilla (paginando solo) y lo
  * descarga. Debajo de cada QR se imprime su código, como en la hoja de etiquetas.
  * jsPDF se carga de forma diferida para no engordar el bundle inicial.
+ *
+ * Informa del avance vía `onProgress` y cede el hilo periódicamente para que la
+ * UI (p. ej. una barra de progreso) se repinte durante la generación.
  */
 export async function generateProductsQrPdf(
   items: QrPdfItem[],
-  layout: QrGridLayout = QR_GRID_8,
-  filename = 'qr-productos.pdf',
+  options: GenerateQrPdfOptions = {},
 ): Promise<void> {
   if (items.length === 0) return;
+  const { layout = QR_GRID_8, filename = 'qr-productos.pdf', onProgress } = options;
+  const total = items.length;
 
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: layout.orientation, unit: 'mm', format: 'a4' });
@@ -66,13 +91,19 @@ export async function generateProductsQrPdf(
   const qrSize = Math.min(cellW, cellH - LABEL_GAP - LABEL_HEIGHT) * QR_FILL;
   const blockH = qrSize + LABEL_GAP + LABEL_HEIGHT;
 
-  // Pre-generamos todos los QR en paralelo antes de componer el documento.
-  const qrImages = await Promise.all(items.map((it) => generateQrDataUrl(it.code, QR_PX)));
+  // Fase 1: generar los QR de uno en uno, informando y cediendo el hilo. Es la
+  // parte más costosa, así que le damos la mayor parte de la barra.
+  const qrImages: string[] = [];
+  for (let i = 0; i < total; i++) {
+    qrImages.push(await generateQrDataUrl(items[i].code, QR_PX));
+    onProgress?.({ done: i + 1, total, phase: 'qr', ratio: ((i + 1) / total) * QR_SHARE });
+    if (i % 6 === 5) await yieldToBrowser();
+  }
 
+  // Fase 2: componer el documento colocando cada QR y su código.
   doc.setFont('courier', 'bold');
   doc.setFontSize(11);
-
-  items.forEach((it, i) => {
+  for (let i = 0; i < total; i++) {
     const { page, col, row } = gridSlot(i, layout.columns, layout.rows);
     if (page > 0 && col === 0 && row === 0) doc.addPage();
 
@@ -83,11 +114,18 @@ export async function generateProductsQrPdf(
     const qrY = cellY + (cellH - blockH) / 2;
 
     doc.addImage(qrImages[i], 'PNG', qrX, qrY, qrSize, qrSize);
-    doc.text(it.code, cellX + cellW / 2, qrY + qrSize + LABEL_GAP, {
+    doc.text(items[i].code, cellX + cellW / 2, qrY + qrSize + LABEL_GAP, {
       align: 'center',
       baseline: 'top',
     });
-  });
 
+    if (i % 12 === 11) {
+      const ratio = QR_SHARE + ((i + 1) / total) * (1 - QR_SHARE);
+      onProgress?.({ done: i + 1, total, phase: 'compose', ratio });
+      await yieldToBrowser();
+    }
+  }
+
+  onProgress?.({ done: total, total, phase: 'compose', ratio: 1 });
   doc.save(filename);
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight, QrCode } from 'lucide-react';
 import { useProducts } from '@/features/products/useProducts';
 import { downloadAllProductsQrPdf } from '@/features/products/downloadProductsQr';
+import type { QrPdfProgress } from '@/lib/qrPdf';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { formatMoney } from '@/lib/format';
 import {
@@ -14,6 +15,7 @@ import {
   StockBadge,
   EmptyState,
   Skeleton,
+  ProgressModal,
 } from '@/components/ui';
 
 export function ProductsPage() {
@@ -24,13 +26,23 @@ export function ProductsPage() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressInfo, setProgressInfo] = useState<QrPdfProgress | null>(null);
 
   async function handleDownloadQr() {
     if (exporting) return;
     setExportError(null);
+    setProgress(0);
+    setProgressInfo(null);
     setExporting(true);
     try {
-      await downloadAllProductsQrPdf();
+      await downloadAllProductsQrPdf((p) => {
+        setProgress(p.ratio);
+        setProgressInfo(p);
+      });
+      setProgress(1);
+      // Deja ver el 100% un instante antes de cerrar el modal.
+      await new Promise((resolve) => setTimeout(resolve, 600));
     } catch (err) {
       setExportError(
         err instanceof Error ? err.message : 'No se pudo generar el PDF de códigos QR.',
@@ -39,6 +51,15 @@ export function ProductsPage() {
       setExporting(false);
     }
   }
+
+  const progressMessage =
+    progress >= 1
+      ? '¡Listo! Descargando el PDF…'
+      : progressInfo?.phase === 'compose'
+        ? 'Componiendo el PDF…'
+        : progressInfo
+          ? `Generando códigos QR… ${progressInfo.done}/${progressInfo.total}`
+          : 'Preparando…';
 
   const list = products.data ?? [];
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
@@ -173,6 +194,13 @@ export function ProductsPage() {
           }
         />
       )}
+
+      <ProgressModal
+        open={exporting}
+        title="Generando PDF de códigos QR"
+        message={progressMessage}
+        progress={progress}
+      />
     </div>
   );
 }
