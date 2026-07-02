@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight } from 'lucide-react';
+import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight, QrCode } from 'lucide-react';
 import { useProducts } from '@/features/products/useProducts';
+import { downloadAllProductsQrPdf } from '@/features/products/downloadProductsQr';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { formatMoney } from '@/lib/format';
 import {
   PageHeader,
+  Button,
   ButtonLink,
   Input,
   Card,
@@ -20,6 +22,24 @@ export function ProductsPage() {
   const products = useProducts(debounced);
   const isSearching = debounced.trim().length > 0;
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function handleDownloadQr() {
+    if (exporting) return;
+    setExportError(null);
+    setExporting(true);
+    try {
+      await downloadAllProductsQrPdf();
+    } catch (err) {
+      setExportError(
+        err instanceof Error ? err.message : 'No se pudo generar el PDF de códigos QR.',
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const list = products.data ?? [];
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
   const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
@@ -30,12 +50,32 @@ export function ProductsPage() {
         title="Productos"
         subtitle="Da de alta productos para generar su QR y escanearlos."
         action={
-          <ButtonLink to="/products/new" size="sm">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Nuevo
-          </ButtonLink>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-auto"
+              onClick={handleDownloadQr}
+              loading={exporting}
+              title="Descargar un PDF con el QR de todos los productos activos"
+            >
+              <QrCode className="h-4 w-4" aria-hidden="true" />
+              QR PDF
+            </Button>
+            <ButtonLink to="/products/new" size="sm">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Nuevo
+            </ButtonLink>
+          </div>
         }
       />
+
+      {exportError && (
+        <p className="text-sm text-destructive" role="alert">
+          {exportError}
+        </p>
+      )}
 
       <div className="relative">
         <Search

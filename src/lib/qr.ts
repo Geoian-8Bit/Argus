@@ -1,10 +1,10 @@
 import QRCode from 'qrcode';
 
-export async function generateQrDataUrl(text: string): Promise<string> {
+export async function generateQrDataUrl(text: string, width = 256): Promise<string> {
   return QRCode.toDataURL(text, {
     errorCorrectionLevel: 'M',
     margin: 1,
-    width: 256,
+    width,
   });
 }
 
