@@ -1,0 +1,50 @@
+name: Supabase keepalive
+
+# Mantiene "despierto" el proyecto de Supabase (plan Free). Los proyectos
+# gratuitos se PAUSAN tras ~7 días sin actividad; una petición periódica a la
+# API REST cuenta como actividad y evita la pausa.
+#
+# La URL y la clave son PÚBLICAS (la publishable/anon key ya viaja en el bundle
+# del navegador), por eso van aquí directamente y no como secrets. No dan acceso
+# a nada que no proteja ya la RLS de la base de datos.
+#
+# Nota: GitHub deshabilita los workflows programados si el repo pasa 60 días sin
+# commits. Este repo se actualiza a menudo, así que no debería ser un problema;
+# si lo fuera, se puede reactivar desde la pestaña Actions o con un push.
+
+on:
+  schedule:
+    # Cada 3 días a las 06:17 UTC (minuto != 0 para esquivar la congestión del
+    # scheduler de GitHub en el minuto en punto).
+    - cron: '17 6 */3 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URL: https://cxigogzugcuxtisckaai.supabase.co
+  SUPABASE_KEY: sb_publishable_oOvvwBKPKCtISTE2A_MvYg_TeKmuimj
+
+jobs:
+  ping:
+    name: Ping Supabase REST
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Keepalive request
+        run: |
+          echo "Pinging $SUPABASE_URL ..."
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            --retry 3 --retry-delay 5 --max-time 30 \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/products?select=id&limit=1")
+          echo "HTTP $code"
+          # 2xx = ok. Con RLS, una lectura anónima devuelve 200 y lista vacía;
+          # igualmente cuenta como actividad. Cualquier respuesta del servidor
+          # sirve para no pausar, pero exigimos 2xx para detectar caídas reales.
+          case "$code" in
+            2*) echo "Supabase respondió correctamente."; exit 0 ;;
+            *)  echo "::error::Respuesta inesperada de Supabase (HTTP $code)"; exit 1 ;;
+          esac
