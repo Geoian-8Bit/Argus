@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight, QrCode } from 'lucide-react';
 import { useProducts } from '@/features/products/useProducts';
-import { downloadAllProductsQrPdf } from '@/features/products/downloadProductsQr';
+import { downloadProductsQrPdf } from '@/features/products/downloadProductsQr';
+import { QrSelectModal } from '@/features/products/QrSelectModal';
 import type { QrPdfProgress } from '@/lib/qrPdf';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { formatMoney } from '@/lib/format';
@@ -24,19 +25,21 @@ export function ProductsPage() {
   const products = useProducts(debounced);
   const isSearching = debounced.trim().length > 0;
 
+  const [selectOpen, setSelectOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState<QrPdfProgress | null>(null);
 
-  async function handleDownloadQr() {
+  async function handleExportSelected(codes: string[]) {
     if (exporting) return;
+    setSelectOpen(false);
     setExportError(null);
     setProgress(0);
     setProgressInfo(null);
     setExporting(true);
     try {
-      await downloadAllProductsQrPdf((p) => {
+      await downloadProductsQrPdf(codes, (p) => {
         setProgress(p.ratio);
         setProgressInfo(p);
       });
@@ -77,9 +80,9 @@ export function ProductsPage() {
               variant="outline"
               size="sm"
               className="w-auto"
-              onClick={handleDownloadQr}
+              onClick={() => setSelectOpen(true)}
               loading={exporting}
-              title="Descargar un PDF con el QR de todos los productos activos"
+              title="Descargar un PDF con el QR de los productos que selecciones"
             >
               <QrCode className="h-4 w-4" aria-hidden="true" />
               QR PDF
@@ -193,6 +196,10 @@ export function ProductsPage() {
             </ButtonLink>
           }
         />
+      )}
+
+      {selectOpen && (
+        <QrSelectModal onClose={() => setSelectOpen(false)} onConfirm={handleExportSelected} />
       )}
 
       <ProgressModal
