@@ -60,14 +60,8 @@ function App() {
                       </RequireAdmin>
                     }
                   />
-                  <Route
-                    path="/history"
-                    element={
-                      <RequireAdmin>
-                        <HistoryPage />
-                      </RequireAdmin>
-                    }
-                  />
+                  {/* Historial visible para admin y staff. */}
+                  <Route path="/history" element={<HistoryPage />} />
                   <Route
                     path="/users"
                     element={

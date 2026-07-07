@@ -30,5 +30,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
 export const STAFF_NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/checklist', label: 'Furgoneta', icon: Truck },
+  { to: '/history', label: 'Historial', icon: History },
   { to: '/dashboard', label: 'Revisiones', icon: ClipboardCheck },
 ];
