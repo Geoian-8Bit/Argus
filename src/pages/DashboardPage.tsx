@@ -5,9 +5,9 @@ import {
   TriangleAlert,
   PackageX,
   TrendingUp,
+  TrendingDown,
   BarChart3,
   Wallet,
-  Coins,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -32,6 +32,7 @@ import {
   Spinner,
 } from '@/components/ui';
 import { formatMoney } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
 function LoadError({ onRetry }: { onRetry: () => void }) {
@@ -60,17 +61,20 @@ function SectionTitle({ icon: Icon, children }: { icon?: LucideIcon; children: R
 
 function ActivityChart() {
   const activity = useActivity(7);
-  if (activity.isLoading) return <Skeleton className="h-32 w-full" />;
+  const [selected, setSelected] = useState<number | null>(null);
+
+  if (activity.isLoading) return <Skeleton className="h-40 w-full" />;
   if (activity.isError) return <LoadError onRetry={() => void activity.refetch()} />;
 
   const days = activity.data ?? [];
   const max = Math.max(1, ...days.flatMap((d) => [d.inQty, d.outQty]));
   const totalIn = days.reduce((s, d) => s + d.inQty, 0);
   const totalOut = days.reduce((s, d) => s + d.outQty, 0);
-  const bar = (v: number) => (v <= 0 ? 0 : Math.max(4, Math.round((v / max) * 88)));
+  const pct = (v: number) => (v <= 0 ? 0 : Math.max(5, Math.round((v / max) * 100)));
+  const sel = selected !== null ? days[selected] : null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-ok" /> Entradas{' '}
@@ -81,28 +85,69 @@ function ActivityChart() {
           <strong className="tabular-nums text-foreground">{totalOut}</strong>
         </span>
       </div>
-      <div className="flex h-28 items-end justify-between gap-1.5">
-        {days.map((d) => (
-          <div key={d.key} className="flex flex-1 flex-col items-center gap-1">
-            <div className="flex h-[88px] items-end justify-center gap-1">
+
+      <div className="flex items-end gap-1">
+        {days.map((d, i) => {
+          const active = selected === i;
+          const dimmed = selected !== null && !active;
+          const isToday = i === days.length - 1;
+          return (
+            <button
+              key={d.key}
+              type="button"
+              onClick={() => setSelected(active ? null : i)}
+              aria-pressed={active}
+              aria-label={`${d.label} ${d.dayOfMonth}: ${d.inQty} entradas, ${d.outQty} salidas`}
+              className={cn(
+                'flex flex-1 flex-col items-center gap-1 rounded-md pb-1 pt-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active && 'bg-muted/60',
+              )}
+            >
+              <div
+                className={cn(
+                  'flex h-24 w-full items-end justify-center gap-0.5 transition-opacity duration-200',
+                  dimmed && 'opacity-35',
+                )}
+              >
+                {[
+                  { qty: d.inQty, color: 'bg-ok' },
+                  { qty: d.outQty, color: 'bg-destructive' },
+                ].map((serie, j) => (
+                  <span
+                    key={j}
+                    className={cn(
+                      'w-2.5 rounded-t transition-[height] duration-300 ease-out',
+                      serie.qty > 0 ? serie.color : 'bg-border',
+                    )}
+                    style={{ height: serie.qty > 0 ? `${pct(serie.qty)}%` : '2px' }}
+                  />
+                ))}
+              </div>
               <span
-                className="w-2.5 rounded-t bg-ok"
-                style={{ height: `${bar(d.inQty)}px` }}
-                title={`Entradas: ${d.inQty}`}
-              />
-              <span
-                className="w-2.5 rounded-t bg-destructive"
-                style={{ height: `${bar(d.outQty)}px` }}
-                title={`Salidas: ${d.outQty}`}
-              />
-            </div>
-            <span className="text-[10px] leading-tight text-muted-foreground">{d.label}</span>
-            <span className="text-[10px] leading-none tabular-nums text-muted-foreground/70">
-              {d.dayOfMonth}
-            </span>
-          </div>
-        ))}
+                className={cn(
+                  'text-[10px] leading-tight',
+                  isToday || active ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {d.label} {d.dayOfMonth}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Lectura del día seleccionado (altura fija para no mover el layout). */}
+      <p className="h-4 text-center text-xs text-muted-foreground" aria-live="polite">
+        {sel ? (
+          <>
+            {sel.label} {sel.dayOfMonth} ·{' '}
+            <strong className="tabular-nums text-ok">+{sel.inQty}</strong> entradas ·{' '}
+            <strong className="tabular-nums text-destructive">−{sel.outQty}</strong> salidas
+          </>
+        ) : (
+          'Toca un día para ver el detalle'
+        )}
+      </p>
     </div>
   );
 }
@@ -136,33 +181,40 @@ function TopProducts({ data }: { data: ProductStat[] }) {
       />
       {ranked.length > 0 ? (
         <Card className="p-4">
-          <ul className="space-y-3">
-            {ranked.map((p) => {
+          <ul className="space-y-3.5">
+            {ranked.map((p, i) => {
               const primary = isRevenue ? formatMoney(p.total_revenue) : `${p.total_out} uds`;
               const secondary = isRevenue ? `${p.total_out} uds` : formatMoney(p.total_revenue);
               return (
                 <li key={p.id}>
-                  <Link to={`/products/${p.id}`} className="block">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-medium">
-                        {p.name}
-                        {p.variant ? (
-                          <span className="text-muted-foreground"> · {p.variant}</span>
-                        ) : null}
+                  <Link to={`/products/${p.id}`} className="flex items-center gap-2.5">
+                    <span className="w-5 shrink-0 text-center font-mono text-xs tabular-nums text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-sm font-medium">
+                          {p.name}
+                          {p.variant ? (
+                            <span className="text-muted-foreground"> · {p.variant}</span>
+                          ) : null}
+                        </span>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums">
+                          {primary}
+                        </span>
                       </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums">{primary}</span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <span
-                          className="block h-full rounded-full bg-brand"
-                          style={{ width: `${Math.round((value(p) / max) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {secondary}
+                      <span className="mt-1 flex items-center gap-2">
+                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                          <span
+                            className="block h-full rounded-full bg-brand"
+                            style={{ width: `${Math.round((value(p) / max) * 100)}%` }}
+                          />
+                        </span>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {secondary}
+                        </span>
                       </span>
-                    </div>
+                    </span>
                   </Link>
                 </li>
               );
@@ -180,14 +232,27 @@ function TopProducts({ data }: { data: ProductStat[] }) {
   );
 }
 
-// Ventas de un periodo elegible (semana/mes/trimestre/año) con navegación.
+const pctFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
+
+// Ventas de un periodo elegible (semana/mes/trimestre/año) con navegación y
+// comparación con el periodo anterior. Tarjeta única con los ingresos como
+// cifra principal para que no se rompa en pantallas estrechas.
 function PeriodSales() {
   const [granularity, setGranularity] = useState<Granularity>('month');
   const [offset, setOffset] = useState(0);
   const period = useMemo(() => periodRange(granularity, offset), [granularity, offset]);
+  const prevPeriod = useMemo(() => periodRange(granularity, offset - 1), [granularity, offset]);
   const sales = useSales(period);
+  const prevSales = useSales(prevPeriod);
   const d = sales.data;
-  const diffPositive = (d?.diff ?? 0) >= 0;
+
+  const revenue = d?.revenue ?? 0;
+  const diff = d?.diff ?? 0;
+  const prevRevenue = prevSales.data?.revenue ?? 0;
+  // Variación de ingresos frente al periodo anterior; null si no hay base.
+  const changePct =
+    prevSales.isSuccess && prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : null;
+  const changeUp = (changePct ?? 0) >= 0;
 
   function changeGranularity(next: Granularity) {
     setGranularity(next);
@@ -198,40 +263,90 @@ function PeriodSales() {
     <div className="space-y-3">
       <Segmented
         ariaLabel="Escala de tiempo"
+        size="sm"
         value={granularity}
         onChange={changeGranularity}
         options={GRANULARITIES}
       />
 
-      <div className="flex items-center justify-between gap-2">
-        <IconButton aria-label="Periodo anterior" onClick={() => setOffset((o) => o - 1)}>
-          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+      <div className="flex h-11 items-center justify-between rounded-md border border-input bg-background px-1">
+        <IconButton
+          aria-label="Periodo anterior"
+          className="h-9 w-9"
+          onClick={() => setOffset((o) => o - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </IconButton>
-        <span className="text-sm font-semibold capitalize tabular-nums">{period.label}</span>
+        <span className="text-sm font-medium capitalize">{period.label}</span>
         <IconButton
           aria-label="Periodo siguiente"
+          className="h-9 w-9"
           disabled={offset >= 0}
           onClick={() => setOffset((o) => Math.min(0, o + 1))}
         >
-          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </IconButton>
       </div>
 
       {sales.isLoading ? (
-        <Skeleton className="h-[5.25rem] w-full" />
+        <Skeleton className="h-44 w-full" />
       ) : sales.isError ? (
         <LoadError onRetry={() => void sales.refetch()} />
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          <StatTile label="Uds vendidas" value={d?.unitsSold ?? 0} icon={Coins} />
-          <StatTile label="Ingresos" value={formatMoney(d?.revenue ?? 0)} icon={Wallet} />
-          <StatTile
-            label="Margen vs. PVP"
-            value={`${diffPositive ? '+' : ''}${formatMoney(d?.diff ?? 0)}`}
-            icon={TrendingUp}
-            tone={diffPositive ? 'ok' : 'destructive'}
-          />
-        </div>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Ingresos</p>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Wallet className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+          <p className="mt-1.5 font-sans text-4xl font-semibold leading-none tracking-tight">
+            {formatMoney(revenue)}
+          </p>
+
+          <div className="mt-2.5">
+            {changePct !== null ? (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                  changeUp ? 'bg-ok/10 text-ok' : 'bg-destructive/10 text-destructive',
+                )}
+              >
+                {changeUp ? (
+                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {changeUp ? '+' : ''}
+                {pctFmt.format(changePct)}% vs. periodo anterior
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Sin ventas en el periodo anterior para comparar
+              </span>
+            )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Uds vendidas</p>
+              <p className="mt-0.5 text-lg font-semibold leading-tight">{d?.unitsSold ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Margen vs. PVP</p>
+              <p
+                className={cn(
+                  'mt-0.5 text-lg font-semibold leading-tight',
+                  diff > 0 && 'text-ok',
+                  diff < 0 && 'text-destructive',
+                )}
+              >
+                {diff > 0 ? '+' : ''}
+                {formatMoney(diff)}
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   );
