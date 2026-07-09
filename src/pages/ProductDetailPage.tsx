@@ -4,6 +4,8 @@ import { ArrowLeft, PackageX, Trash2, CheckCircle2 } from 'lucide-react';
 import { useProduct } from '@/features/products/useProduct';
 import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
+import { useCreateProductGroup } from '@/features/products/useProductGroups';
+import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
 import { QrPreview } from '@/features/products/QrPreview';
 import {
   Card,
@@ -22,6 +24,7 @@ export function ProductDetailPage() {
   const productQuery = useProduct(id);
   const updateProduct = useUpdateProduct();
   const archiveProduct = useArchiveProduct();
+  const createGroup = useCreateProductGroup();
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -29,10 +32,17 @@ export function ProductDetailPage() {
   const [notes, setNotes] = useState('');
   const [price, setPrice] = useState('');
   const [minStock, setMinStock] = useState('');
+  const [group, setGroup] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const product = productQuery.data ?? null;
+
+  // El detalle siempre se abre arriba; el listado restaura su propio scroll al volver.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (product) {
@@ -42,6 +52,8 @@ export function ProductDetailPage() {
       setNotes(product.notes ?? '');
       setPrice(String(Number(product.price) || 0));
       setMinStock(String(product.min_stock ?? 0));
+      setGroup(product.group_id ?? '');
+      setNewGroupName('');
     }
   }, [product]);
 
@@ -68,19 +80,29 @@ export function ProductDetailPage() {
     );
   }
 
+  const groupDirty =
+    group === NEW_GROUP
+      ? newGroupName.trim().length > 0
+      : (group || null) !== (product.group_id ?? null);
   const dirty =
     code !== product.code ||
     name !== product.name ||
     variant !== (product.variant ?? '') ||
     notes !== (product.notes ?? '') ||
     (Number(price) || 0) !== (Number(product.price) || 0) ||
-    (Math.trunc(Number(minStock)) || 0) !== (product.min_stock ?? 0);
+    (Math.trunc(Number(minStock)) || 0) !== (product.min_stock ?? 0) ||
+    groupDirty;
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!product) return;
     setSaved(false);
     try {
+      let groupId: string | null = group && group !== NEW_GROUP ? group : null;
+      if (group === NEW_GROUP) {
+        const newGroup = await createGroup.mutateAsync(newGroupName);
+        groupId = newGroup.id;
+      }
       await updateProduct.mutateAsync({
         id: product.id,
         code,
@@ -89,10 +111,11 @@ export function ProductDetailPage() {
         notes,
         price: Math.max(0, Number(price) || 0),
         minStock: Math.max(0, Math.trunc(Number(minStock)) || 0),
+        groupId,
       });
       setSaved(true);
     } catch {
-      // El error se muestra vía updateProduct.error
+      // El error se muestra vía updateProduct.error / createGroup.error
     }
   }
 
@@ -164,6 +187,19 @@ export function ProductDetailPage() {
               disabled={updateProduct.isPending}
             />
           </Field>
+          <GroupSelect
+            value={group}
+            onChange={(value) => {
+              setGroup(value);
+              setSaved(false);
+            }}
+            newName={newGroupName}
+            onNewNameChange={(value) => {
+              setNewGroupName(value);
+              setSaved(false);
+            }}
+            disabled={updateProduct.isPending || createGroup.isPending}
+          />
           <Field label="Precio base (€/ud)" hint="PVP de referencia para ventas y valor de almacén">
             <Input
               type="number"
@@ -212,9 +248,9 @@ export function ProductDetailPage() {
             Se actualiza con entradas y salidas, no se edita aquí.
           </div>
 
-          {updateProduct.isError && (
+          {(updateProduct.isError || createGroup.isError) && (
             <p className="text-sm text-destructive" role="alert">
-              {updateProduct.error.message}
+              {updateProduct.error?.message ?? createGroup.error?.message}
             </p>
           )}
           {saved && !dirty && (
@@ -224,7 +260,11 @@ export function ProductDetailPage() {
             </p>
           )}
 
-          <Button type="submit" disabled={!dirty} loading={updateProduct.isPending}>
+          <Button
+            type="submit"
+            disabled={!dirty}
+            loading={updateProduct.isPending || createGroup.isPending}
+          >
             Guardar cambios
           </Button>
         </form>

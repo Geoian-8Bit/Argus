@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { useCreateProduct, type Product } from '@/features/products/useCreateProduct';
+import { useCreateProductGroup } from '@/features/products/useProductGroups';
+import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
 import { DEFAULT_MIN_STOCK } from '@/features/products/constants';
 import { QrPreview } from '@/features/products/QrPreview';
 import { PageHeader, Button, ButtonLink, Field, Input, Textarea } from '@/components/ui';
@@ -17,9 +19,12 @@ export function ProductNewPage() {
   const [initialStock, setInitialStock] = useState<string>('0');
   const [price, setPrice] = useState<string>('');
   const [minStock, setMinStock] = useState<string>(String(DEFAULT_MIN_STOCK));
+  const [group, setGroup] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
   const [created, setCreated] = useState<Product | null>(null);
 
   const createProduct = useCreateProduct();
+  const createGroup = useCreateProductGroup();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,6 +32,13 @@ export function ProductNewPage() {
     const priceNum = Math.max(0, Number(price) || 0);
     const minStockNum = Math.max(0, Math.trunc(Number(minStock)) || 0);
     try {
+      let groupId: string | null = group && group !== NEW_GROUP ? group : null;
+      if (group === NEW_GROUP) {
+        const newGroup = await createGroup.mutateAsync(newGroupName);
+        groupId = newGroup.id;
+        setGroup(newGroup.id);
+        setNewGroupName('');
+      }
       const product = await createProduct.mutateAsync({
         code,
         name,
@@ -35,10 +47,11 @@ export function ProductNewPage() {
         initialStock: stockNum,
         price: priceNum,
         minStock: minStockNum,
+        groupId,
       });
       setCreated(product);
     } catch {
-      // El error queda expuesto via createProduct.error
+      // El error queda expuesto via createProduct.error / createGroup.error
     }
   }
 
@@ -51,7 +64,10 @@ export function ProductNewPage() {
     setInitialStock('0');
     setPrice('');
     setMinStock(String(DEFAULT_MIN_STOCK));
+    setGroup('');
+    setNewGroupName('');
     createProduct.reset();
+    createGroup.reset();
   }
 
   if (created) {
@@ -120,6 +136,14 @@ export function ProductNewPage() {
           />
         </Field>
 
+        <GroupSelect
+          value={group}
+          onChange={setGroup}
+          newName={newGroupName}
+          onNewNameChange={setNewGroupName}
+          disabled={createProduct.isPending || createGroup.isPending}
+        />
+
         <Field
           label="Precio base (€/ud)"
           hint="PVP de referencia. Se usará al vender y para el valor de almacén."
@@ -170,13 +194,13 @@ export function ProductNewPage() {
           />
         </Field>
 
-        {createProduct.isError && (
+        {(createProduct.isError || createGroup.isError) && (
           <p className="text-sm text-destructive" role="alert">
-            {createProduct.error.message}
+            {createProduct.error?.message ?? createGroup.error?.message}
           </p>
         )}
 
-        <Button type="submit" loading={createProduct.isPending}>
+        <Button type="submit" loading={createProduct.isPending || createGroup.isPending}>
           Guardar y generar QR
         </Button>
       </form>

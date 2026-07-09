@@ -12,6 +12,8 @@ export interface CreateProductInput {
   price?: number;
   /** Umbral de stock bajo. */
   minStock?: number;
+  /** Grupo al que pertenece el producto. */
+  groupId?: string | null;
 }
 
 export type Product = Tables<'products'>;
@@ -44,7 +46,15 @@ export function useCreateProduct() {
 
       const { data: product, error } = await supabase
         .from('products')
-        .insert({ code, name, variant, notes, price, min_stock: minStock })
+        .insert({
+          code,
+          name,
+          variant,
+          notes,
+          price,
+          min_stock: minStock,
+          group_id: input.groupId ?? null,
+        })
         .select()
         .single();
 

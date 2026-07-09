@@ -52,11 +52,30 @@ export type Database = {
           },
         ];
       };
+      product_groups: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+        };
+        Relationships: [];
+      };
       products: {
         Row: {
           archived_at: string | null;
           code: string;
           created_at: string;
+          group_id: string | null;
           id: string;
           min_stock: number;
           name: string;
@@ -70,6 +89,7 @@ export type Database = {
           archived_at?: string | null;
           code: string;
           created_at?: string;
+          group_id?: string | null;
           id?: string;
           min_stock?: number;
           name: string;
@@ -83,6 +103,7 @@ export type Database = {
           archived_at?: string | null;
           code?: string;
           created_at?: string;
+          group_id?: string | null;
           id?: string;
           min_stock?: number;
           name?: string;
@@ -92,7 +113,15 @@ export type Database = {
           updated_at?: string;
           variant?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'products_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'product_groups';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       profiles: {
         Row: {

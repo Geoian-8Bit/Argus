@@ -13,6 +13,8 @@ export interface UpdateProductInput {
   price?: number;
   /** Umbral de stock bajo. */
   minStock?: number;
+  /** Grupo al que pertenece el producto (null = sin grupo). */
+  groupId?: string | null;
 }
 
 export function useUpdateProduct() {
@@ -43,6 +45,7 @@ export function useUpdateProduct() {
           notes: input.notes?.trim() || null,
           price,
           min_stock: minStock,
+          group_id: input.groupId ?? null,
         })
         .eq('id', input.id)
         .select()

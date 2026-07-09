@@ -1,12 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Package, PackagePlus, Plus, SearchX, ChevronRight, QrCode } from 'lucide-react';
-import { useProducts } from '@/features/products/useProducts';
+import {
+  Search,
+  Package,
+  PackagePlus,
+  Plus,
+  SearchX,
+  ChevronRight,
+  ChevronDown,
+  QrCode,
+  FolderPlus,
+  Pencil,
+} from 'lucide-react';
+import { useProducts, type Product } from '@/features/products/useProducts';
+import { useProductGroups, type ProductGroup } from '@/features/products/useProductGroups';
+import { GroupModal } from '@/features/products/GroupModal';
+import {
+  loadProductsListState,
+  saveProductsListState,
+  type ProductsView,
+} from '@/features/products/productsListState';
 import { downloadProductsQrPdf } from '@/features/products/downloadProductsQr';
 import { QrSelectModal } from '@/features/products/QrSelectModal';
 import type { QrPdfProgress } from '@/lib/qrPdf';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { formatMoney } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import {
   PageHeader,
   Button,
@@ -16,20 +35,101 @@ import {
   StockBadge,
   EmptyState,
   Skeleton,
+  Segmented,
+  type SegmentedOption,
   ProgressModal,
 } from '@/components/ui';
 
+/** Clave del pseudogrupo que agrupa los productos sin grupo asignado. */
+const UNGROUPED = 'ungrouped';
+
+const VIEWS: SegmentedOption<ProductsView>[] = [
+  { value: 'groups', label: 'Grupos' },
+  { value: 'products', label: 'Productos' },
+];
+
+interface GroupSection {
+  key: string;
+  name: string;
+  /** Grupo real (ausente en "Sin grupo"), para poder editarlo. */
+  group?: ProductGroup;
+  products: Product[];
+}
+
+function ProductRow({ product }: { product: Product }) {
+  return (
+    <li>
+      <Link
+        to={`/products/${product.id}`}
+        className="flex items-center gap-3 px-4 py-3 transition-colors last:rounded-b-lg hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">
+            {product.name}
+            {product.variant ? (
+              <span className="text-muted-foreground"> · {product.variant}</span>
+            ) : null}
+          </p>
+          <p className="truncate font-mono text-xs text-muted-foreground">{product.code}</p>
+        </div>
+        <div className="flex flex-col items-end gap-0.5">
+          <StockBadge stock={product.stock} minStock={product.min_stock} />
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {formatMoney(product.stock * product.price)}
+          </span>
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </Link>
+    </li>
+  );
+}
+
 export function ProductsPage() {
-  const [search, setSearch] = useState('');
+  // Estado persistido (vista, búsqueda, grupos abiertos, scroll) para que al
+  // volver del detalle el listado quede como estaba.
+  const initialState = useRef(loadProductsListState()).current;
+  const [view, setView] = useState<ProductsView>(initialState.view);
+  const [search, setSearch] = useState(initialState.search);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(initialState.expanded));
   const debounced = useDebouncedValue(search, 250);
   const products = useProducts(debounced);
+  const groupsQuery = useProductGroups();
   const isSearching = debounced.trim().length > 0;
+
+  // undefined = cerrado, null = crear grupo, objeto = editar ese grupo.
+  const [groupModal, setGroupModal] = useState<ProductGroup | null | undefined>(undefined);
 
   const [selectOpen, setSelectOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState<QrPdfProgress | null>(null);
+
+  const stateRef = useRef({ view, search, expanded });
+  stateRef.current = { view, search, expanded };
+  useEffect(
+    () => () => {
+      saveProductsListState({
+        view: stateRef.current.view,
+        search: stateRef.current.search,
+        expanded: [...stateRef.current.expanded],
+        scrollY: window.scrollY,
+      });
+    },
+    [],
+  );
+
+  const isLoading = products.isLoading || groupsQuery.isLoading;
+  const isError = products.isError || groupsQuery.isError;
+  const loadError = products.error ?? groupsQuery.error;
+
+  // Restaura el scroll cuando el listado ya está pintado con datos.
+  const scrollRestored = useRef(false);
+  useLayoutEffect(() => {
+    if (scrollRestored.current || isLoading) return;
+    scrollRestored.current = true;
+    if (initialState.scrollY > 0) window.scrollTo(0, initialState.scrollY);
+  }, [isLoading, initialState.scrollY]);
 
   async function handleExportSelected(codes: string[]) {
     if (exporting) return;
@@ -64,9 +164,46 @@ export function ProductsPage() {
           ? `Generando códigos QR… ${progressInfo.done}/${progressInfo.total}`
           : 'Preparando…';
 
-  const list = products.data ?? [];
+  const list = useMemo(() => products.data ?? [], [products.data]);
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
   const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
+
+  const sections = useMemo<GroupSection[]>(() => {
+    const byGroup = new Map<string, Product[]>();
+    for (const p of list) {
+      const key = p.group_id ?? UNGROUPED;
+      const bucket = byGroup.get(key);
+      if (bucket) bucket.push(p);
+      else byGroup.set(key, [p]);
+    }
+    const groups = groupsQuery.data ?? [];
+    const known = new Set(groups.map((g) => g.id));
+    // Sin búsqueda se muestran también los grupos vacíos (para poder editarlos);
+    // buscando, solo los grupos con resultados.
+    const result: GroupSection[] = groups
+      .filter((g) => (isSearching ? byGroup.has(g.id) : true))
+      .map((g) => ({ key: g.id, name: g.name, group: g, products: byGroup.get(g.id) ?? [] }));
+    // Los productos sin grupo (o con un grupo ya inexistente) van al final.
+    const ungrouped = [...(byGroup.get(UNGROUPED) ?? [])];
+    for (const [key, prods] of byGroup) {
+      if (key !== UNGROUPED && !known.has(key)) ungrouped.push(...prods);
+    }
+    if (ungrouped.length > 0) {
+      result.push({ key: UNGROUPED, name: 'Sin grupo', products: ungrouped });
+    }
+    return result;
+  }, [list, groupsQuery.data, isSearching]);
+
+  function toggleGroup(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const hasContent = view === 'groups' ? sections.length > 0 : list.length > 0;
 
   return (
     <div className="space-y-5">
@@ -74,7 +211,7 @@ export function ProductsPage() {
         title="Productos"
         subtitle="Da de alta productos para generar su QR y escanearlos."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -86,6 +223,17 @@ export function ProductsPage() {
             >
               <QrCode className="h-4 w-4" aria-hidden="true" />
               QR PDF
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-auto"
+              onClick={() => setGroupModal(null)}
+              title="Crear un grupo y elegir sus productos"
+            >
+              <FolderPlus className="h-4 w-4" aria-hidden="true" />
+              Grupo
             </Button>
             <ButtonLink to="/products/new" size="sm">
               <Plus className="h-4 w-4" aria-hidden="true" />
@@ -101,23 +249,27 @@ export function ProductsPage() {
         </p>
       )}
 
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input
-          type="search"
-          inputMode="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o código"
-          aria-label="Buscar productos"
-          className="pl-9"
-        />
+      <div className="space-y-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            inputMode="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o código"
+            aria-label="Buscar productos"
+            className="pl-9"
+          />
+        </div>
+
+        <Segmented value={view} onChange={setView} options={VIEWS} ariaLabel="Tipo de vista" />
       </div>
 
-      {products.isLoading ? (
+      {isLoading ? (
         <Card className="p-4">
           <div className="space-y-3">
             <Skeleton className="h-10 w-full" />
@@ -125,15 +277,13 @@ export function ProductsPage() {
             <Skeleton className="h-10 w-full" />
           </div>
         </Card>
-      ) : products.isError ? (
+      ) : isError ? (
         <EmptyState
           icon={SearchX}
           title="No se pudo cargar"
-          description={
-            products.error instanceof Error ? products.error.message : 'Inténtalo de nuevo.'
-          }
+          description={loadError instanceof Error ? loadError.message : 'Inténtalo de nuevo.'}
         />
-      ) : list.length > 0 ? (
+      ) : hasContent ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
             <span className="text-muted-foreground">
@@ -145,38 +295,78 @@ export function ProductsPage() {
             </span>
           </div>
 
-          <Card>
-            <ul className="divide-y divide-border">
-              {list.map((p) => (
-                <li key={p.id}>
-                  <Link
-                    to={`/products/${p.id}`}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          {view === 'products' ? (
+            <Card>
+              <ul className="divide-y divide-border">
+                {list.map((p) => (
+                  <ProductRow key={p.id} product={p} />
+                ))}
+              </ul>
+            </Card>
+          ) : (
+            sections.map((section) => {
+              // Durante una búsqueda se muestran abiertos todos los grupos con resultados.
+              const isOpen = isSearching || expanded.has(section.key);
+              const units = section.products.reduce((sum, p) => sum + p.stock, 0);
+              const value = section.products.reduce((sum, p) => sum + p.stock * p.price, 0);
+              return (
+                <Card key={section.key}>
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => {
+                      if (!isSearching) toggleGroup(section.key);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {p.name}
-                        {p.variant ? (
-                          <span className="text-muted-foreground"> · {p.variant}</span>
-                        ) : null}
+                      <p className="truncate text-sm font-semibold">{section.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {section.products.length}{' '}
+                        {section.products.length === 1 ? 'producto' : 'productos'} ·{' '}
+                        <span className="tabular-nums">{units}</span> uds
                       </p>
-                      <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                      <StockBadge stock={p.stock} minStock={p.min_stock} />
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {formatMoney(p.stock * p.price)}
-                      </span>
-                    </div>
-                    <ChevronRight
-                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                      {formatMoney(value)}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out',
+                        isOpen && 'rotate-180',
+                      )}
                       aria-hidden="true"
                     />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
+                  </button>
+
+                  {isOpen && (
+                    <ul className="divide-y divide-border border-t border-border">
+                      {section.products.length === 0 && (
+                        <li className="px-4 py-3 text-sm text-muted-foreground">
+                          Este grupo no tiene productos.
+                        </li>
+                      )}
+                      {section.products.map((p) => (
+                        <ProductRow key={p.id} product={p} />
+                      ))}
+                      {section.group && (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => setGroupModal(section.group)}
+                            className="flex w-full items-center justify-center gap-1.5 rounded-b-lg px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                            Editar grupo
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </Card>
+              );
+            })
+          )}
         </div>
       ) : isSearching ? (
         <EmptyState
@@ -200,6 +390,10 @@ export function ProductsPage() {
 
       {selectOpen && (
         <QrSelectModal onClose={() => setSelectOpen(false)} onConfirm={handleExportSelected} />
+      )}
+
+      {groupModal !== undefined && (
+        <GroupModal group={groupModal} onClose={() => setGroupModal(undefined)} />
       )}
 
       <ProgressModal
