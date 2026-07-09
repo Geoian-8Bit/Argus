@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { Inbox, History as HistoryIcon, Search, SearchX } from 'lucide-react';
+import {
+  Inbox,
+  History as HistoryIcon,
+  Search,
+  SearchX,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import {
   useMovements,
   type MovementWithProduct,
@@ -8,8 +15,16 @@ import {
 import { MovementItem } from '@/features/movements/MovementItem';
 import { dayKey, dayLabel } from '@/lib/format';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
-import { PageHeader, Card, EmptyState, Skeleton, Input } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import {
+  PageHeader,
+  Card,
+  EmptyState,
+  Skeleton,
+  Input,
+  IconButton,
+  Segmented,
+  type SegmentedOption,
+} from '@/components/ui';
 
 interface DayGroup {
   key: string;
@@ -33,17 +48,71 @@ function groupByDay(movements: MovementWithProduct[]): DayGroup[] {
 
 type TypeFilter = 'all' | MovementType;
 
-const FILTERS: { value: TypeFilter; label: string }[] = [
+const TYPE_FILTERS: SegmentedOption<TypeFilter>[] = [
   { value: 'all', label: 'Todos' },
   { value: 'in', label: 'Entradas' },
   { value: 'out', label: 'Salidas' },
 ];
 
+type PeriodMode = 'month' | 'day';
+
+const PERIOD_MODES: SegmentedOption<PeriodMode>[] = [
+  { value: 'month', label: 'Mes' },
+  { value: 'day', label: 'Día' },
+];
+
+/** Clave de mes local "YYYY-MM". */
+function monthKeyOf(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Clave de día local "YYYY-MM-DD" (formato de <input type="date">). */
+function dayKeyOf(date: Date): string {
+  return `${monthKeyOf(date)}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  return monthKeyOf(new Date(y, m - 1 + delta, 1));
+}
+
+/** Rango [inicio de mes, inicio del mes siguiente) en hora local, como ISO. */
+function monthRange(month: string): { from: string; to: string } {
+  const [y, m] = month.split('-').map(Number);
+  return {
+    from: new Date(y, m - 1, 1).toISOString(),
+    to: new Date(y, m, 1).toISOString(),
+  };
+}
+
+/** Rango [inicio del día, inicio del día siguiente) en hora local, como ISO. */
+function dayRange(day: string): { from: string; to: string } {
+  const [y, m, d] = day.split('-').map(Number);
+  return {
+    from: new Date(y, m - 1, d).toISOString(),
+    to: new Date(y, m - 1, d + 1).toISOString(),
+  };
+}
+
+const monthFmt = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric' });
+
+function monthLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return monthFmt.format(new Date(y, m - 1, 1));
+}
+
 export function HistoryPage() {
-  const movements = useMovements(200);
+  const [mode, setMode] = useState<PeriodMode>('month');
+  const [month, setMonth] = useState(() => monthKeyOf(new Date()));
+  const [day, setDay] = useState(() => dayKeyOf(new Date()));
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<TypeFilter>('all');
   const term = useDebouncedValue(search.trim().toLowerCase(), 200);
+
+  const currentMonth = monthKeyOf(new Date());
+  const today = dayKeyOf(new Date());
+  const range = mode === 'month' ? monthRange(month) : dayRange(day);
+  const movements = useMovements(range);
 
   const all = movements.data ?? [];
   const filtered = all.filter((m) => {
@@ -78,31 +147,55 @@ export function HistoryPage() {
           />
         </div>
 
-        <div
-          role="tablist"
-          aria-label="Filtrar por tipo"
-          className="flex gap-1 rounded-lg bg-muted p-1"
-        >
-          {FILTERS.map((f) => {
-            const active = filter === f.value;
-            return (
-              <button
-                key={f.value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setFilter(f.value)}
-                className={cn(
-                  'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  active
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          options={TYPE_FILTERS}
+          ariaLabel="Filtrar por tipo"
+        />
+
+        <div className="flex items-center gap-2">
+          <Segmented
+            value={mode}
+            onChange={setMode}
+            options={PERIOD_MODES}
+            ariaLabel="Ver por mes o por día"
+            className="w-32 shrink-0"
+          />
+          {mode === 'month' ? (
+            <div className="flex h-11 flex-1 items-center justify-between rounded-md border border-input bg-background px-1">
+              <IconButton
+                aria-label="Mes anterior"
+                className="h-9 w-9"
+                onClick={() => setMonth(shiftMonth(month, -1))}
               >
-                {f.label}
-              </button>
-            );
-          })}
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </IconButton>
+              <span className="text-sm font-medium first-letter:uppercase">
+                {monthLabel(month)}
+              </span>
+              <IconButton
+                aria-label="Mes siguiente"
+                className="h-9 w-9"
+                disabled={month >= currentMonth}
+                onClick={() => setMonth(shiftMonth(month, 1))}
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </IconButton>
+            </div>
+          ) : (
+            <div className="flex-1">
+              <Input
+                type="date"
+                value={day}
+                max={today}
+                onChange={(e) => {
+                  if (e.target.value) setDay(e.target.value);
+                }}
+                aria-label="Día del historial"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -149,7 +242,11 @@ export function HistoryPage() {
         <EmptyState
           icon={Inbox}
           title="Sin movimientos"
-          description="Cuando registres entradas o salidas aparecerán aquí."
+          description={
+            mode === 'month'
+              ? `No hay movimientos en ${monthLabel(month)}.`
+              : 'No hay movimientos en el día seleccionado.'
+          }
         />
       )}
     </div>

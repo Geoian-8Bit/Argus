@@ -57,7 +57,7 @@ export function HomePage() {
   const role = useRole();
   const isAdmin = role.data === 'admin';
   const stats = useDashboardStats();
-  const recent = useMovements(5);
+  const recent = useMovements({ limit: 5 });
   const lowStock = stats.data?.lowStock ?? 0;
 
   return (
