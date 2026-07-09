@@ -1,18 +1,18 @@
 // Estado de UI del listado de productos, persistido en sessionStorage para que
-// al volver del detalle se conserven la búsqueda, los grupos abiertos y el scroll.
+// al volver del detalle se conserven la vista, la búsqueda y el scroll.
+// Los acordeones de grupo no se persisten: siempre se entra con todos cerrados.
 
 export type ProductsView = 'groups' | 'products';
 
 export interface ProductsListState {
   view: ProductsView;
   search: string;
-  expanded: string[];
   scrollY: number;
 }
 
 const STORAGE_KEY = 'argus:products-list-state';
 
-const DEFAULT_STATE: ProductsListState = { view: 'groups', search: '', expanded: [], scrollY: 0 };
+const DEFAULT_STATE: ProductsListState = { view: 'groups', search: '', scrollY: 0 };
 
 export function loadProductsListState(): ProductsListState {
   try {
@@ -22,9 +22,6 @@ export function loadProductsListState(): ProductsListState {
     return {
       view: parsed.view === 'products' ? 'products' : 'groups',
       search: typeof parsed.search === 'string' ? parsed.search : '',
-      expanded: Array.isArray(parsed.expanded)
-        ? parsed.expanded.filter((k): k is string => typeof k === 'string')
-        : [],
       scrollY: typeof parsed.scrollY === 'number' ? parsed.scrollY : 0,
     };
   } catch {

@@ -85,12 +85,12 @@ function ProductRow({ product }: { product: Product }) {
 }
 
 export function ProductsPage() {
-  // Estado persistido (vista, búsqueda, grupos abiertos, scroll) para que al
-  // volver del detalle el listado quede como estaba.
+  // Estado persistido (vista, búsqueda, scroll) para que al volver del detalle
+  // el listado quede como estaba. Los grupos siempre empiezan cerrados.
   const initialState = useRef(loadProductsListState()).current;
   const [view, setView] = useState<ProductsView>(initialState.view);
   const [search, setSearch] = useState(initialState.search);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(initialState.expanded));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const debounced = useDebouncedValue(search, 250);
   const products = useProducts(debounced);
   const groupsQuery = useProductGroups();
@@ -116,14 +116,13 @@ export function ProductsPage() {
   const [progress, setProgress] = useState(0);
   const [progressInfo, setProgressInfo] = useState<QrPdfProgress | null>(null);
 
-  const stateRef = useRef({ view, search, expanded });
-  stateRef.current = { view, search, expanded };
+  const stateRef = useRef({ view, search });
+  stateRef.current = { view, search };
   useEffect(
     () => () => {
       saveProductsListState({
         view: stateRef.current.view,
         search: stateRef.current.search,
-        expanded: [...stateRef.current.expanded],
         scrollY: window.scrollY,
       });
     },
