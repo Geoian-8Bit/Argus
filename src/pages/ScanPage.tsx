@@ -11,6 +11,7 @@ import {
 import { QrScanner } from '@/features/scan/QrScanner';
 import { useProductByCode } from '@/features/scan/useProductByCode';
 import { useRegisterMovement } from '@/features/movements/useRegisterMovement';
+import { useRole } from '@/features/auth/useRole';
 import {
   PageHeader,
   Card,
@@ -42,6 +43,9 @@ export function ScanPage() {
 
   const productQuery = useProductByCode(scannedCode);
   const registerMovement = useRegisterMovement();
+  const role = useRole();
+  // El staff no ve precios: en salidas se registra el precio base sin mostrarlo.
+  const isAdmin = role.data === 'admin';
 
   const handleDecoded = useCallback((text: string) => {
     setScannedCode((prev) => (prev === text ? prev : text));
@@ -58,13 +62,13 @@ export function ScanPage() {
 
   const product = productQuery.data ?? null;
 
-  // Al cargar el producto en una salida, precargamos el precio de venta con el
-  // precio base; el usuario puede modificarlo antes de confirmar.
+  // Al cargar el producto en una salida (solo admin), precargamos el precio de
+  // venta con el precio base; el usuario puede modificarlo antes de confirmar.
   useEffect(() => {
-    if (product && action === 'out') {
+    if (product && action === 'out' && isAdmin) {
       setSalePrice(String(Number(product.price) || 0));
     }
-  }, [product?.id, action]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product?.id, action, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!action) {
     return <Navigate to="/" replace />;
@@ -77,20 +81,23 @@ export function ScanPage() {
   const isSale = action === 'out';
   const priceNum = Number(salePrice);
   const priceValid = Number.isFinite(priceNum) && priceNum >= 0 && salePrice.trim() !== '';
-  const canConfirm = qtyValid && (!isSale || priceValid);
+  // El staff no introduce precio: se usa el precio base del producto.
+  const showPriceField = isSale && isAdmin;
+  const canConfirm = qtyValid && (!showPriceField || priceValid);
 
   async function handleConfirm() {
     if (!product || !action || !canConfirm) return;
+    const unitPrice = isAdmin ? priceNum : Number(product.price) || 0;
     try {
       await registerMovement.mutateAsync({
         productId: product.id,
         productCode: product.code,
         type: action,
         qty: qtyNum,
-        unitPrice: isSale ? priceNum : null,
+        unitPrice: isSale ? unitPrice : null,
       });
       const base = `${isSale ? '−' : '+'}${qtyNum} · ${product.name}${product.variant ? ` (${product.variant})` : ''}`;
-      setSuccessMessage(isSale ? `${base} · ${formatMoney(priceNum * qtyNum)}` : base);
+      setSuccessMessage(isSale && isAdmin ? `${base} · ${formatMoney(unitPrice * qtyNum)}` : base);
       setScannedCode(null);
       setQty('1');
       setSalePrice('');
@@ -150,7 +157,7 @@ export function ScanPage() {
             />
           </Field>
 
-          {isSale && (
+          {showPriceField && (
             <Field
               label="Precio de venta (€/ud)"
               hint={
