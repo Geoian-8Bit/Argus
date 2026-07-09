@@ -86,6 +86,10 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(10px) scale(0.97)' },
           to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
+        'dropdown-in': {
+          from: { opacity: '0', transform: 'translateY(-6px) scale(0.95)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
         'progress-stripes': {
           from: { backgroundPosition: '1rem 0' },
           to: { backgroundPosition: '0 0' },
@@ -102,6 +106,7 @@ const config: Config = {
       animation: {
         'fade-in': 'fade-in 0.2s ease-out',
         'modal-in': 'modal-in 0.28s var(--ease-out)',
+        'dropdown-in': 'dropdown-in 0.18s var(--ease-out)',
         'progress-stripes': 'progress-stripes 0.7s linear infinite',
         'progress-shimmer': 'progress-shimmer 1.5s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 1.6s ease-in-out infinite',

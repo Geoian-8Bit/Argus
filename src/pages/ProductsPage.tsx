@@ -99,6 +99,17 @@ export function ProductsPage() {
   // undefined = cerrado, null = crear grupo, objeto = editar ese grupo.
   const [groupModal, setGroupModal] = useState<ProductGroup | null | undefined>(undefined);
 
+  // Desplegable del botón "Nuevo" (Producto / Grupo).
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNewMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [newMenuOpen]);
+
   const [selectOpen, setSelectOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -211,7 +222,7 @@ export function ProductsPage() {
         title="Productos"
         subtitle="Da de alta productos para generar su QR y escanearlos."
         action={
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -224,21 +235,59 @@ export function ProductsPage() {
               <QrCode className="h-4 w-4" aria-hidden="true" />
               QR PDF
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-auto"
-              onClick={() => setGroupModal(null)}
-              title="Crear un grupo y elegir sus productos"
-            >
-              <FolderPlus className="h-4 w-4" aria-hidden="true" />
-              Grupo
-            </Button>
-            <ButtonLink to="/products/new" size="sm">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Nuevo
-            </ButtonLink>
+            <div className="relative">
+              <Button
+                type="button"
+                size="sm"
+                className="w-auto"
+                onClick={() => setNewMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={newMenuOpen}
+              >
+                <Plus
+                  className={cn(
+                    'h-4 w-4 transition-transform duration-200 ease-out',
+                    newMenuOpen && 'rotate-45',
+                  )}
+                  aria-hidden="true"
+                />
+                Nuevo
+              </Button>
+
+              {newMenuOpen && (
+                <>
+                  {/* Capa invisible para cerrar el menú al tocar fuera. */}
+                  <div className="fixed inset-0 z-30" onClick={() => setNewMenuOpen(false)} />
+                  <div
+                    role="menu"
+                    aria-label="Crear nuevo"
+                    className="absolute right-0 top-full z-40 mt-2 w-44 origin-top-right animate-dropdown-in overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+                  >
+                    <Link
+                      to="/products/new"
+                      role="menuitem"
+                      onClick={() => setNewMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      Producto
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setNewMenuOpen(false);
+                        setGroupModal(null);
+                      }}
+                      className="flex w-full items-center gap-2.5 border-t border-border px-3.5 py-2.5 text-left text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      <FolderPlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      Grupo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         }
       />
