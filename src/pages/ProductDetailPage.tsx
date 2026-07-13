@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, PackageX, Trash2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, PackageX, Trash2, CheckCircle2, Archive, RotateCcw } from 'lucide-react';
 import { useProduct } from '@/features/products/useProduct';
 import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
+import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
 import { QrPreview } from '@/features/products/QrPreview';
@@ -24,6 +25,7 @@ export function ProductDetailPage() {
   const productQuery = useProduct(id);
   const updateProduct = useUpdateProduct();
   const archiveProduct = useArchiveProduct();
+  const restoreProduct = useRestoreProduct();
   const createGroup = useCreateProductGroup();
 
   const [code, setCode] = useState('');
@@ -129,6 +131,19 @@ export function ProductDetailPage() {
     }
   }
 
+  async function handleReactivate() {
+    if (!product) return;
+    try {
+      // Invalida la query del producto: al recargar, archived_at pasa a null
+      // y la ficha vuelve a mostrar la zona de "Eliminar".
+      await restoreProduct.mutateAsync(product.id);
+    } catch {
+      // El error se muestra vía restoreProduct.error
+    }
+  }
+
+  const isArchived = Boolean(product.archived_at);
+
   return (
     <div className="space-y-5">
       <Link
@@ -138,6 +153,16 @@ export function ProductDetailPage() {
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Productos
       </Link>
+
+      {isArchived && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          <Archive className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Producto <strong className="text-foreground">archivado</strong>. No aparece en los
+            listados salvo al buscarlo. Reactívalo abajo para volver a usarlo.
+          </span>
+        </div>
+      )}
 
       {/* Código QR */}
       <section className="space-y-2">
@@ -270,42 +295,63 @@ export function ProductDetailPage() {
         </form>
       </Card>
 
-      {/* Zona de peligro */}
-      <section className="space-y-2">
-        <h3 className="px-1 font-display text-sm font-semibold text-destructive">
-          Eliminar producto
-        </h3>
-        <Card className="space-y-3 border-destructive/40 p-4">
-          <p className="text-sm text-muted-foreground">
-            El producto dejará de aparecer en los listados. Su historial de movimientos se conserva.
-          </p>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={confirmDelete}
-              onChange={(e) => setConfirmDelete(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--destructive))]"
-            />
-            <span>
-              Confirmo que quiero eliminar <strong>{product.name}</strong>.
-            </span>
-          </label>
-          {archiveProduct.isError && (
-            <p className="text-sm text-destructive" role="alert">
-              {archiveProduct.error.message}
+      {/* Zona de peligro / reactivación */}
+      {isArchived ? (
+        <section className="space-y-2">
+          <h3 className="px-1 font-display text-sm font-semibold">Reactivar producto</h3>
+          <Card className="space-y-3 p-4">
+            <p className="text-sm text-muted-foreground">
+              Volverá a aparecer en los listados y podrá escanearse y venderse de nuevo.
             </p>
-          )}
-          <Button
-            variant="destructive"
-            disabled={!confirmDelete}
-            loading={archiveProduct.isPending}
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {restoreProduct.isError && (
+              <p className="text-sm text-destructive" role="alert">
+                {restoreProduct.error.message}
+              </p>
+            )}
+            <Button loading={restoreProduct.isPending} onClick={handleReactivate}>
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              Reactivar producto
+            </Button>
+          </Card>
+        </section>
+      ) : (
+        <section className="space-y-2">
+          <h3 className="px-1 font-display text-sm font-semibold text-destructive">
             Eliminar producto
-          </Button>
-        </Card>
-      </section>
+          </h3>
+          <Card className="space-y-3 border-destructive/40 p-4">
+            <p className="text-sm text-muted-foreground">
+              El producto dejará de aparecer en los listados. Su historial de movimientos se
+              conserva y podrás reactivarlo buscándolo.
+            </p>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={confirmDelete}
+                onChange={(e) => setConfirmDelete(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--destructive))]"
+              />
+              <span>
+                Confirmo que quiero eliminar <strong>{product.name}</strong>.
+              </span>
+            </label>
+            {archiveProduct.isError && (
+              <p className="text-sm text-destructive" role="alert">
+                {archiveProduct.error.message}
+              </p>
+            )}
+            <Button
+              variant="destructive"
+              disabled={!confirmDelete}
+              loading={archiveProduct.isPending}
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              Eliminar producto
+            </Button>
+          </Card>
+        </section>
+      )}
     </div>
   );
 }

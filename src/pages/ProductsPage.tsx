@@ -11,8 +11,11 @@ import {
   QrCode,
   FolderPlus,
   Pencil,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 import { useProducts, type Product } from '@/features/products/useProducts';
+import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useProductGroups, type ProductGroup } from '@/features/products/useProductGroups';
 import { GroupModal } from '@/features/products/GroupModal';
 import {
@@ -84,6 +87,47 @@ function ProductRow({ product }: { product: Product }) {
   );
 }
 
+function ArchivedRow({
+  product,
+  onRestore,
+  restoring,
+}: {
+  product: Product;
+  onRestore: (id: string) => void;
+  restoring: boolean;
+}) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <Link
+        to={`/products/${product.id}`}
+        className="min-w-0 flex-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <p className="flex items-center gap-2 truncate text-sm font-medium text-muted-foreground">
+          <span className="truncate">
+            {product.name}
+            {product.variant ? <span> · {product.variant}</span> : null}
+          </span>
+          <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Archivado
+          </span>
+        </p>
+        <p className="truncate font-mono text-xs text-muted-foreground">{product.code}</p>
+      </Link>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-auto shrink-0"
+        loading={restoring}
+        onClick={() => onRestore(product.id)}
+      >
+        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+        Reactivar
+      </Button>
+    </li>
+  );
+}
+
 export function ProductsPage() {
   // Estado persistido (vista, búsqueda, scroll) para que al volver del detalle
   // el listado quede como estaba. Los grupos siempre empiezan cerrados.
@@ -94,6 +138,7 @@ export function ProductsPage() {
   const debounced = useDebouncedValue(search, 250);
   const products = useProducts(debounced);
   const groupsQuery = useProductGroups();
+  const restoreProduct = useRestoreProduct();
   const isSearching = debounced.trim().length > 0;
 
   // undefined = cerrado, null = crear grupo, objeto = editar ese grupo.
@@ -174,7 +219,11 @@ export function ProductsPage() {
           ? `Generando códigos QR… ${progressInfo.done}/${progressInfo.total}`
           : 'Preparando…';
 
-  const list = useMemo(() => products.data ?? [], [products.data]);
+  // Los archivados solo llegan al buscar; se muestran aparte y no cuentan en
+  // los totales de stock/valor (son productos inactivos).
+  const rawList = useMemo(() => products.data ?? [], [products.data]);
+  const list = useMemo(() => rawList.filter((p) => !p.archived_at), [rawList]);
+  const archivedList = useMemo(() => rawList.filter((p) => p.archived_at), [rawList]);
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
   const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
 
@@ -213,7 +262,12 @@ export function ProductsPage() {
     });
   }
 
-  const hasContent = view === 'groups' ? sections.length > 0 : list.length > 0;
+  const hasActive = view === 'groups' ? sections.length > 0 : list.length > 0;
+  const hasContent = hasActive || archivedList.length > 0;
+
+  function handleRestore(productId: string) {
+    restoreProduct.mutate(productId);
+  }
 
   return (
     <div className="space-y-5">
@@ -297,6 +351,12 @@ export function ProductsPage() {
         </p>
       )}
 
+      {restoreProduct.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          No se pudo reactivar el producto: {restoreProduct.error.message}
+        </p>
+      )}
+
       <div className="space-y-3">
         <div className="relative">
           <Search
@@ -333,17 +393,19 @@ export function ProductsPage() {
         />
       ) : hasContent ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
-            <span className="text-muted-foreground">
-              {list.length} {list.length === 1 ? 'producto' : 'productos'} ·{' '}
-              <span className="tabular-nums text-foreground">{totalUnits}</span> uds
-            </span>
-            <span className="font-semibold tabular-nums" title="Valor del stock a precio base">
-              {formatMoney(totalValue)}
-            </span>
-          </div>
+          {hasActive && (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
+              <span className="text-muted-foreground">
+                {list.length} {list.length === 1 ? 'producto' : 'productos'} ·{' '}
+                <span className="tabular-nums text-foreground">{totalUnits}</span> uds
+              </span>
+              <span className="font-semibold tabular-nums" title="Valor del stock a precio base">
+                {formatMoney(totalValue)}
+              </span>
+            </div>
+          )}
 
-          {view === 'products' ? (
+          {!hasActive ? null : view === 'products' ? (
             <Card>
               <ul className="divide-y divide-border">
                 {list.map((p) => (
@@ -414,6 +476,27 @@ export function ProductsPage() {
                 </Card>
               );
             })
+          )}
+
+          {archivedList.length > 0 && (
+            <Card>
+              <div className="flex items-center gap-2 rounded-t-lg border-b border-border bg-muted/40 px-4 py-3">
+                <Archive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Archivados <span className="tabular-nums">({archivedList.length})</span>
+                </p>
+              </div>
+              <ul className="divide-y divide-border">
+                {archivedList.map((p) => (
+                  <ArchivedRow
+                    key={p.id}
+                    product={p}
+                    onRestore={handleRestore}
+                    restoring={restoreProduct.isPending && restoreProduct.variables === p.id}
+                  />
+                ))}
+              </ul>
+            </Card>
           )}
         </div>
       ) : isSearching ? (

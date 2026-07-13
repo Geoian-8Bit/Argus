@@ -9,14 +9,15 @@ export function useProducts(search = '') {
   return useQuery({
     queryKey: ['products', 'list', term],
     queryFn: async (): Promise<Product[]> => {
-      let query = supabase
-        .from('products')
-        .select('*')
-        .is('archived_at', null)
-        .order('name', { ascending: true });
+      let query = supabase.from('products').select('*').order('name', { ascending: true });
       if (term) {
+        // Buscando: incluye también los archivados (se marcan aparte) para
+        // poder encontrarlos y reactivarlos.
         const like = `%${term}%`;
         query = query.or(`code.ilike.${like},name.ilike.${like}`);
+      } else {
+        // Navegando: solo productos activos.
+        query = query.is('archived_at', null);
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);
