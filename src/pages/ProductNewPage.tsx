@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
-import { useCreateProduct, type Product } from '@/features/products/useCreateProduct';
+import {
+  useCreateProduct,
+  ProductCodeConflictError,
+  type Product,
+} from '@/features/products/useCreateProduct';
+import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
 import { DEFAULT_MIN_STOCK } from '@/features/products/constants';
@@ -9,6 +14,7 @@ import { QrPreview } from '@/features/products/QrPreview';
 import { PageHeader, Button, ButtonLink, Field, Input, Textarea } from '@/components/ui';
 
 export function ProductNewPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const prefilledCode = searchParams.get('code') ?? '';
 
@@ -25,6 +31,24 @@ export function ProductNewPage() {
 
   const createProduct = useCreateProduct();
   const createGroup = useCreateProductGroup();
+  const restoreProduct = useRestoreProduct();
+
+  // Si el código choca con un producto archivado, ofrecemos restaurarlo en
+  // lugar de dejar al usuario bloqueado con un "ya existe" sin salida.
+  const conflict =
+    createProduct.error instanceof ProductCodeConflictError && createProduct.error.archived
+      ? createProduct.error
+      : null;
+
+  async function handleRestore() {
+    if (!conflict?.productId) return;
+    try {
+      await restoreProduct.mutateAsync(conflict.productId);
+      navigate(`/products/${conflict.productId}`);
+    } catch {
+      // El error queda expuesto via restoreProduct.error
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -195,9 +219,24 @@ export function ProductNewPage() {
         </Field>
 
         {(createProduct.isError || createGroup.isError) && (
-          <p className="text-sm text-destructive" role="alert">
-            {createProduct.error?.message ?? createGroup.error?.message}
-          </p>
+          <div className="space-y-2" role="alert">
+            <p className="text-sm text-destructive">
+              {createProduct.error?.message ?? createGroup.error?.message}
+            </p>
+            {conflict && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRestore}
+                loading={restoreProduct.isPending}
+              >
+                Restaurar producto
+              </Button>
+            )}
+            {restoreProduct.isError && (
+              <p className="text-sm text-destructive">{restoreProduct.error.message}</p>
+            )}
+          </div>
         )}
 
         <Button type="submit" loading={createProduct.isPending || createGroup.isPending}>

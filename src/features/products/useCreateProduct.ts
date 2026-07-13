@@ -18,6 +18,36 @@ export interface CreateProductInput {
 
 export type Product = Tables<'products'>;
 
+/**
+ * El código choca con un producto ya existente. Si ese producto está archivado
+ * no aparece en el listado, así que el error lo señala para poder restaurarlo.
+ */
+export class ProductCodeConflictError extends Error {
+  readonly code: string;
+  readonly productId: string | null;
+  readonly productName: string | null;
+  readonly archived: boolean;
+
+  constructor(
+    code: string,
+    existing: { id: string; name: string; archived_at: string | null } | null,
+  ) {
+    const archived = Boolean(existing?.archived_at);
+    super(
+      archived
+        ? `Ya existe un producto archivado con el código "${code}"${
+            existing?.name ? ` (${existing.name})` : ''
+          }. Puedes restaurarlo.`
+        : `Ya existe un producto con el código "${code}".`,
+    );
+    this.name = 'ProductCodeConflictError';
+    this.code = code;
+    this.productId = existing?.id ?? null;
+    this.productName = existing?.name ?? null;
+    this.archived = archived;
+  }
+}
+
 export function useCreateProduct() {
   const queryClient = useQueryClient();
 
@@ -60,7 +90,14 @@ export function useCreateProduct() {
 
       if (error) {
         if (error.code === '23505') {
-          throw new Error(`Ya existe un producto con el código "${code}".`);
+          // El código ya existe. Buscamos el producto (puede estar archivado y
+          // por eso no salir en el listado) para ofrecer restaurarlo.
+          const { data: existing } = await supabase
+            .from('products')
+            .select('id, name, archived_at')
+            .eq('code', code)
+            .maybeSingle();
+          throw new ProductCodeConflictError(code, existing ?? null);
         }
         throw new Error(error.message);
       }
