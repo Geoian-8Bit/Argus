@@ -1,11 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, PackageX, Trash2, CheckCircle2, Archive, RotateCcw } from 'lucide-react';
+import {
+  ArrowLeft,
+  PackageX,
+  Trash2,
+  CheckCircle2,
+  Archive,
+  RotateCcw,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+} from 'lucide-react';
 import { useProduct } from '@/features/products/useProduct';
 import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
+import { useRegisterMovement, type MovementType } from '@/features/movements/useRegisterMovement';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
 import { QrPreview } from '@/features/products/QrPreview';
 import {
@@ -16,6 +26,7 @@ import {
   Input,
   Textarea,
   Spinner,
+  StockBadge,
   EmptyState,
 } from '@/components/ui';
 
@@ -27,6 +38,7 @@ export function ProductDetailPage() {
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useRestoreProduct();
   const createGroup = useCreateProductGroup();
+  const registerMovement = useRegisterMovement();
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -38,6 +50,9 @@ export function ProductDetailPage() {
   const [newGroupName, setNewGroupName] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [adjustQty, setAdjustQty] = useState('1');
+  const [adjustDir, setAdjustDir] = useState<MovementType | null>(null);
+  const [adjustDone, setAdjustDone] = useState<string | null>(null);
 
   const product = productQuery.data ?? null;
 
@@ -143,6 +158,31 @@ export function ProductDetailPage() {
   }
 
   const isArchived = Boolean(product.archived_at);
+  const adjustQtyNum = Math.trunc(Number(adjustQty));
+  const adjustQtyValid = Number.isFinite(adjustQtyNum) && adjustQtyNum >= 1;
+
+  async function handleAdjust(type: MovementType) {
+    if (!product || !adjustQtyValid || registerMovement.isPending) return;
+    setAdjustDir(type);
+    setAdjustDone(null);
+    try {
+      await registerMovement.mutateAsync({
+        productId: product.id,
+        productCode: product.code,
+        type,
+        qty: adjustQtyNum,
+        note: 'Ajuste manual desde ficha',
+        // Ajuste de inventario, no una venta: la salida no genera ingresos.
+        unitPrice: type === 'out' ? 0 : null,
+      });
+      setAdjustDone(`${type === 'in' ? '+' : '−'}${adjustQtyNum} unidades`);
+      setAdjustQty('1');
+    } catch {
+      // El error se muestra vía registerMovement.error
+    } finally {
+      setAdjustDir(null);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -174,6 +214,71 @@ export function ProductDetailPage() {
           </p>
         )}
       </section>
+
+      {/* Ajuste manual de stock (solo admin: la ruta ya está protegida) */}
+      {!isArchived && (
+        <Card className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-display text-sm font-semibold">Ajustar stock</h3>
+            <StockBadge stock={product.stock} minStock={product.min_stock} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Añade o retira unidades a mano, sin escanear el QR.
+          </p>
+          <Field label="Cantidad">
+            <Input
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={adjustQty}
+              onChange={(e) => {
+                setAdjustQty(e.target.value);
+                setAdjustDone(null);
+              }}
+              disabled={registerMovement.isPending}
+            />
+          </Field>
+
+          {registerMovement.isError && (
+            <p className="text-sm text-destructive" role="alert">
+              {registerMovement.error.message}
+            </p>
+          )}
+          {adjustDone && (
+            <p className="flex items-center gap-1.5 text-sm text-ok">
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              Stock ajustado: {adjustDone}.
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => handleAdjust('in')}
+              loading={registerMovement.isPending && adjustDir === 'in'}
+              disabled={!adjustQtyValid || registerMovement.isPending}
+            >
+              {!(registerMovement.isPending && adjustDir === 'in') && (
+                <ArrowDownToLine className="h-4 w-4" aria-hidden="true" />
+              )}
+              Añadir
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => handleAdjust('out')}
+              loading={registerMovement.isPending && adjustDir === 'out'}
+              disabled={!adjustQtyValid || registerMovement.isPending}
+            >
+              {!(registerMovement.isPending && adjustDir === 'out') && (
+                <ArrowUpFromLine className="h-4 w-4" aria-hidden="true" />
+              )}
+              Quitar
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Editar datos */}
       <Card className="space-y-4 p-4">
@@ -270,7 +375,7 @@ export function ProductDetailPage() {
 
           <div className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
             Stock actual: <strong className="text-foreground tabular-nums">{product.stock}</strong>.
-            Se actualiza con entradas y salidas, no se edita aquí.
+            Se ajusta con entradas y salidas o con «Ajustar stock» arriba, no en este formulario.
           </div>
 
           {(updateProduct.isError || createGroup.isError) && (
