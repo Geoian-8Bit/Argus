@@ -9,11 +9,13 @@ import {
   RotateCcw,
   ArrowDownToLine,
   ArrowUpFromLine,
+  PowerOff,
 } from 'lucide-react';
 import { useProduct } from '@/features/products/useProduct';
 import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
+import { useSetProductStock } from '@/features/products/useSetProductStock';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { useRegisterMovement, type MovementType } from '@/features/movements/useRegisterMovement';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
@@ -37,6 +39,7 @@ export function ProductDetailPage() {
   const updateProduct = useUpdateProduct();
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useRestoreProduct();
+  const setProductStock = useSetProductStock();
   const createGroup = useCreateProductGroup();
   const registerMovement = useRegisterMovement();
 
@@ -53,6 +56,8 @@ export function ProductDetailPage() {
   const [adjustQty, setAdjustQty] = useState('1');
   const [adjustDir, setAdjustDir] = useState<MovementType | null>(null);
   const [adjustDone, setAdjustDone] = useState<string | null>(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [reactivateStock, setReactivateStock] = useState('0');
 
   const product = productQuery.data ?? null;
 
@@ -158,8 +163,30 @@ export function ProductDetailPage() {
   }
 
   const isArchived = Boolean(product.archived_at);
+  const isInactive = product.stock === -1;
   const adjustQtyNum = Math.trunc(Number(adjustQty));
   const adjustQtyValid = Number.isFinite(adjustQtyNum) && adjustQtyNum >= 1;
+  const reactivateStockNum = Math.trunc(Number(reactivateStock));
+  const reactivateStockValid = Number.isFinite(reactivateStockNum) && reactivateStockNum >= 0;
+
+  async function handleDeactivate() {
+    if (!product) return;
+    try {
+      await setProductStock.mutateAsync({ id: product.id, stock: -1 });
+      setConfirmDeactivate(false);
+    } catch {
+      // El error se muestra vía setProductStock.error
+    }
+  }
+
+  async function handleReactivateStock() {
+    if (!product || !reactivateStockValid) return;
+    try {
+      await setProductStock.mutateAsync({ id: product.id, stock: reactivateStockNum });
+    } catch {
+      // El error se muestra vía setProductStock.error
+    }
+  }
 
   async function handleAdjust(type: MovementType) {
     if (!product || !adjustQtyValid || registerMovement.isPending) return;
@@ -204,6 +231,16 @@ export function ProductDetailPage() {
         </div>
       )}
 
+      {!isArchived && isInactive && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          <PowerOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Producto <strong className="text-foreground">desactivado</strong>: no se utiliza y no
+            cuenta como stock bajo ni agotado. Dale un stock abajo para reactivarlo.
+          </span>
+        </div>
+      )}
+
       {/* Código QR */}
       <section className="space-y-2">
         <h3 className="px-1 font-display text-sm font-semibold">Código QR</h3>
@@ -216,7 +253,7 @@ export function ProductDetailPage() {
       </section>
 
       {/* Ajuste manual de stock (solo admin: la ruta ya está protegida) */}
-      {!isArchived && (
+      {!isArchived && !isInactive && (
         <Card className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-display text-sm font-semibold">Ajustar stock</h3>
@@ -374,8 +411,12 @@ export function ProductDetailPage() {
           </Field>
 
           <div className="rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-            Stock actual: <strong className="text-foreground tabular-nums">{product.stock}</strong>.
-            Se ajusta con entradas y salidas o con «Ajustar stock» arriba, no en este formulario.
+            Stock actual:{' '}
+            <strong className="text-foreground tabular-nums">
+              {isInactive ? 'No se usa' : product.stock}
+            </strong>
+            . Se ajusta con entradas y salidas o con «Ajustar stock» arriba, no en este
+            formulario.
           </div>
 
           {(updateProduct.isError || createGroup.isError) && (
@@ -420,42 +461,124 @@ export function ProductDetailPage() {
           </Card>
         </section>
       ) : (
-        <section className="space-y-2">
-          <h3 className="px-1 font-display text-sm font-semibold text-destructive">
-            Eliminar producto
-          </h3>
-          <Card className="space-y-3 border-destructive/40 p-4">
-            <p className="text-sm text-muted-foreground">
-              El producto dejará de aparecer en los listados. Su historial de movimientos se
-              conserva y podrás reactivarlo buscándolo.
-            </p>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={confirmDelete}
-                onChange={(e) => setConfirmDelete(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--destructive))]"
-              />
-              <span>
-                Confirmo que quiero eliminar <strong>{product.name}</strong>.
-              </span>
-            </label>
-            {archiveProduct.isError && (
-              <p className="text-sm text-destructive" role="alert">
-                {archiveProduct.error.message}
-              </p>
-            )}
-            <Button
-              variant="destructive"
-              disabled={!confirmDelete}
-              loading={archiveProduct.isPending}
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+        <>
+          {isInactive ? (
+            <section className="space-y-2">
+              <h3 className="px-1 font-display text-sm font-semibold">Reactivar producto</h3>
+              <Card className="space-y-3 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Dale un stock inicial para volver a usarlo. Podrás ajustarlo después con
+                  «Ajustar stock».
+                </p>
+                <Field label="Stock inicial">
+                  <Input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={reactivateStock}
+                    onChange={(e) => setReactivateStock(e.target.value)}
+                    disabled={setProductStock.isPending}
+                  />
+                </Field>
+                {setProductStock.isError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {setProductStock.error.message}
+                  </p>
+                )}
+                <Button
+                  loading={setProductStock.isPending}
+                  disabled={!reactivateStockValid}
+                  onClick={handleReactivateStock}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  Reactivar producto
+                </Button>
+              </Card>
+            </section>
+          ) : (
+            <section className="space-y-2">
+              <h3 className="px-1 font-display text-sm font-semibold">Desactivar producto</h3>
+              <Card className="space-y-3 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Para productos que ya no se usan pero no quieres eliminar. Desaparece del
+                  listado y de los avisos de stock bajo/agotado; se puede reactivar cuando haga
+                  falta.
+                </p>
+                {confirmDeactivate ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">¿Seguro?</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-auto"
+                      loading={setProductStock.isPending}
+                      onClick={handleDeactivate}
+                    >
+                      <PowerOff className="h-4 w-4" aria-hidden="true" />
+                      Sí, desactivar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-auto"
+                      disabled={setProductStock.isPending}
+                      onClick={() => setConfirmDeactivate(false)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" onClick={() => setConfirmDeactivate(true)}>
+                    <PowerOff className="h-4 w-4" aria-hidden="true" />
+                    Desactivar producto
+                  </Button>
+                )}
+                {setProductStock.isError && !confirmDeactivate && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {setProductStock.error.message}
+                  </p>
+                )}
+              </Card>
+            </section>
+          )}
+
+          <section className="space-y-2">
+            <h3 className="px-1 font-display text-sm font-semibold text-destructive">
               Eliminar producto
-            </Button>
-          </Card>
-        </section>
+            </h3>
+            <Card className="space-y-3 border-destructive/40 p-4">
+              <p className="text-sm text-muted-foreground">
+                El producto dejará de aparecer en los listados. Su historial de movimientos se
+                conserva y podrás reactivarlo buscándolo.
+              </p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={confirmDelete}
+                  onChange={(e) => setConfirmDelete(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-input accent-[hsl(var(--destructive))]"
+                />
+                <span>
+                  Confirmo que quiero eliminar <strong>{product.name}</strong>.
+                </span>
+              </label>
+              {archiveProduct.isError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {archiveProduct.error.message}
+                </p>
+              )}
+              <Button
+                variant="destructive"
+                disabled={!confirmDelete}
+                loading={archiveProduct.isPending}
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Eliminar producto
+              </Button>
+            </Card>
+          </section>
+        </>
       )}
     </div>
   );

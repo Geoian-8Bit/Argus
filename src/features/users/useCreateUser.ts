@@ -7,12 +7,15 @@ export interface CreateUserInput {
   email: string;
   password: string;
   role: Role;
+  /** Alias opcional a mostrar en vez del email. */
+  displayName?: string;
 }
 
 export interface CreatedUser {
   id: string;
   email: string;
   role: Role;
+  displayName: string | null;
 }
 
 export function useCreateUser() {
@@ -25,6 +28,7 @@ export function useCreateUser() {
           email: input.email.trim().toLowerCase(),
           password: input.password,
           role: input.role,
+          displayName: input.displayName?.trim() || null,
         },
       });
       if (error) throw new Error(await functionErrorMessage(error, 'No se pudo crear el usuario.'));

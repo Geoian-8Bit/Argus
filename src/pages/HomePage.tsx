@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDownToLine,
@@ -12,6 +13,7 @@ import {
 import { useDashboardStats } from '@/features/dashboard/useDashboardStats';
 import { useMovements } from '@/features/movements/useMovements';
 import { MovementItem } from '@/features/movements/MovementItem';
+import { AlertProductsModal } from '@/features/dashboard/AlertProductsModal';
 import { useRole } from '@/features/auth/useRole';
 import { Card, EmptyState, Skeleton, StatTile } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,7 @@ export function HomePage() {
   const stats = useDashboardStats();
   const recent = useMovements({ limit: 5 });
   const lowStock = stats.data?.lowStock ?? 0;
+  const [alertsOpen, setAlertsOpen] = useState(false);
 
   return (
     <div className="space-y-7">
@@ -115,6 +118,7 @@ export function HomePage() {
                     value={lowStock}
                     icon={TriangleAlert}
                     tone={lowStock > 0 ? 'destructive' : 'default'}
+                    onClick={lowStock > 0 ? () => setAlertsOpen(true) : undefined}
                   />
                   <StatTile label="Hoy" value={stats.data?.movementsToday ?? 0} icon={Activity} />
                 </>
@@ -158,6 +162,8 @@ export function HomePage() {
           </section>
         </>
       )}
+
+      {alertsOpen && <AlertProductsModal onClose={() => setAlertsOpen(false)} />}
     </div>
   );
 }

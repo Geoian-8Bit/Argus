@@ -83,7 +83,8 @@ export function ScanPage() {
   const priceValid = Number.isFinite(priceNum) && priceNum >= 0 && salePrice.trim() !== '';
   // El staff no introduce precio: se usa el precio base del producto.
   const showPriceField = isSale && isAdmin;
-  const canConfirm = qtyValid && (!showPriceField || priceValid);
+  const isInactive = product?.stock === -1;
+  const canConfirm = !isInactive && qtyValid && (!showPriceField || priceValid);
 
   async function handleConfirm() {
     if (!product || !action || !canConfirm) return;
@@ -147,17 +148,26 @@ export function ScanPage() {
             <StockBadge stock={product.stock} minStock={product.min_stock} />
           </div>
 
-          <Field label="Cantidad">
-            <Input
-              type="number"
-              min={1}
-              inputMode="numeric"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-            />
-          </Field>
+          {isInactive && (
+            <p className="text-sm text-muted-foreground" role="alert">
+              Este producto está desactivado ("no se usa"). Reactívalo desde su ficha antes de
+              registrar entradas o salidas.
+            </p>
+          )}
 
-          {showPriceField && (
+          {!isInactive && (
+            <Field label="Cantidad">
+              <Input
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+              />
+            </Field>
+          )}
+
+          {!isInactive && showPriceField && (
             <Field
               label="Precio de venta (€/ud)"
               hint={

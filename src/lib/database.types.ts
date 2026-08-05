@@ -80,6 +80,7 @@ export type Database = {
           min_stock: number;
           name: string;
           notes: string | null;
+          position: number | null;
           price: number;
           stock: number;
           updated_at: string;
@@ -94,6 +95,7 @@ export type Database = {
           min_stock?: number;
           name: string;
           notes?: string | null;
+          position?: number | null;
           price?: number;
           stock?: number;
           updated_at?: string;
@@ -108,6 +110,7 @@ export type Database = {
           min_stock?: number;
           name?: string;
           notes?: string | null;
+          position?: number | null;
           price?: number;
           stock?: number;
           updated_at?: string;
@@ -126,18 +129,21 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string;
+          display_name: string | null;
           email: string | null;
           id: string;
           role: string;
         };
         Insert: {
           created_at?: string;
+          display_name?: string | null;
           email?: string | null;
           id: string;
           role?: string;
         };
         Update: {
           created_at?: string;
+          display_name?: string | null;
           email?: string | null;
           id?: string;
           role?: string;
@@ -179,6 +185,7 @@ export type Database = {
           code: string | null;
           id: string | null;
           is_low: boolean | null;
+          is_out: boolean | null;
           last_movement_at: string | null;
           min_stock: number | null;
           movements_count: number | null;

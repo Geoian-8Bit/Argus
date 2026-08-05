@@ -17,12 +17,13 @@ export function useDashboardStats() {
 
       const [total, low, today] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact', head: true }),
-        // Bajo umbral según el min_stock de cada producto (flag is_low de la vista).
+        // Sin stock o bajo umbral (flags is_out / is_low de la vista). Los
+        // desactivados (stock = -1) nunca cumplen ninguno de los dos.
         supabase
           .from('product_stats')
           .select('*', { count: 'exact', head: true })
           .is('archived_at', null)
-          .eq('is_low', true),
+          .or('is_low.eq.true,is_out.eq.true'),
         supabase
           .from('movements')
           .select('*', { count: 'exact', head: true })

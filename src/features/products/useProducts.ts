@@ -9,15 +9,19 @@ export function useProducts(search = '') {
   return useQuery({
     queryKey: ['products', 'list', term],
     queryFn: async (): Promise<Product[]> => {
-      let query = supabase.from('products').select('*').order('name', { ascending: true });
+      let query = supabase
+        .from('products')
+        .select('*')
+        .order('position', { ascending: true, nullsFirst: false })
+        .order('name', { ascending: true });
       if (term) {
-        // Buscando: incluye también los archivados (se marcan aparte) para
-        // poder encontrarlos y reactivarlos.
+        // Buscando: incluye también los archivados y desactivados (se marcan
+        // aparte) para poder encontrarlos y reactivarlos.
         const like = `%${term}%`;
         query = query.or(`code.ilike.${like},name.ilike.${like}`);
       } else {
-        // Navegando: solo productos activos.
-        query = query.is('archived_at', null);
+        // Navegando: solo productos activos y en uso (stock -1 = desactivado).
+        query = query.is('archived_at', null).neq('stock', -1);
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);

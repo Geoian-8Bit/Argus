@@ -6,18 +6,20 @@ import {
   PackagePlus,
   Plus,
   SearchX,
-  ChevronRight,
   ChevronDown,
   QrCode,
   FolderPlus,
   Pencil,
   Archive,
   RotateCcw,
+  PowerOff,
 } from 'lucide-react';
 import { useProducts, type Product } from '@/features/products/useProducts';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
+import { useSetProductStock } from '@/features/products/useSetProductStock';
 import { useProductGroups, type ProductGroup } from '@/features/products/useProductGroups';
 import { GroupModal } from '@/features/products/GroupModal';
+import { SortableProductList } from '@/features/products/SortableProductList';
 import {
   loadProductsListState,
   saveProductsListState,
@@ -35,7 +37,6 @@ import {
   ButtonLink,
   Input,
   Card,
-  StockBadge,
   EmptyState,
   Skeleton,
   Segmented,
@@ -57,34 +58,6 @@ interface GroupSection {
   /** Grupo real (ausente en "Sin grupo"), para poder editarlo. */
   group?: ProductGroup;
   products: Product[];
-}
-
-function ProductRow({ product }: { product: Product }) {
-  return (
-    <li>
-      <Link
-        to={`/products/${product.id}`}
-        className="flex items-center gap-3 px-4 py-3 transition-colors last:rounded-b-lg hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">
-            {product.name}
-            {product.variant ? (
-              <span className="text-muted-foreground"> · {product.variant}</span>
-            ) : null}
-          </p>
-          <p className="truncate font-mono text-xs text-muted-foreground">{product.code}</p>
-        </div>
-        <div className="flex flex-col items-end gap-0.5">
-          <StockBadge stock={product.stock} minStock={product.min_stock} />
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {formatMoney(product.stock * product.price)}
-          </span>
-        </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      </Link>
-    </li>
-  );
 }
 
 function ArchivedRow({
@@ -128,6 +101,47 @@ function ArchivedRow({
   );
 }
 
+function InactiveRow({
+  product,
+  onReactivate,
+  reactivating,
+}: {
+  product: Product;
+  onReactivate: (id: string) => void;
+  reactivating: boolean;
+}) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <Link
+        to={`/products/${product.id}`}
+        className="min-w-0 flex-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <p className="flex items-center gap-2 truncate text-sm font-medium text-muted-foreground">
+          <span className="truncate">
+            {product.name}
+            {product.variant ? <span> · {product.variant}</span> : null}
+          </span>
+          <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            No se usa
+          </span>
+        </p>
+        <p className="truncate font-mono text-xs text-muted-foreground">{product.code}</p>
+      </Link>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-auto shrink-0"
+        loading={reactivating}
+        onClick={() => onReactivate(product.id)}
+      >
+        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+        Reactivar
+      </Button>
+    </li>
+  );
+}
+
 export function ProductsPage() {
   // Estado persistido (vista, búsqueda, scroll) para que al volver del detalle
   // el listado quede como estaba. Los grupos siempre empiezan cerrados.
@@ -139,6 +153,7 @@ export function ProductsPage() {
   const products = useProducts(debounced);
   const groupsQuery = useProductGroups();
   const restoreProduct = useRestoreProduct();
+  const setProductStock = useSetProductStock();
   const isSearching = debounced.trim().length > 0;
 
   // undefined = cerrado, null = crear grupo, objeto = editar ese grupo.
@@ -219,11 +234,18 @@ export function ProductsPage() {
           ? `Generando códigos QR… ${progressInfo.done}/${progressInfo.total}`
           : 'Preparando…';
 
-  // Los archivados solo llegan al buscar; se muestran aparte y no cuentan en
-  // los totales de stock/valor (son productos inactivos).
+  // Los archivados y desactivados solo llegan al buscar; se muestran aparte y
+  // no cuentan en los totales de stock/valor.
   const rawList = useMemo(() => products.data ?? [], [products.data]);
-  const list = useMemo(() => rawList.filter((p) => !p.archived_at), [rawList]);
+  const list = useMemo(
+    () => rawList.filter((p) => !p.archived_at && p.stock !== -1),
+    [rawList],
+  );
   const archivedList = useMemo(() => rawList.filter((p) => p.archived_at), [rawList]);
+  const inactiveList = useMemo(
+    () => rawList.filter((p) => !p.archived_at && p.stock === -1),
+    [rawList],
+  );
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
   const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
 
@@ -263,10 +285,16 @@ export function ProductsPage() {
   }
 
   const hasActive = view === 'groups' ? sections.length > 0 : list.length > 0;
-  const hasContent = hasActive || archivedList.length > 0;
+  const hasContent = hasActive || archivedList.length > 0 || inactiveList.length > 0;
 
   function handleRestore(productId: string) {
     restoreProduct.mutate(productId);
+  }
+
+  function handleReactivate(productId: string) {
+    // Reactivar desde el listado deja el stock en 0; se añade cantidad real
+    // después con "Ajustar stock" en la ficha del producto.
+    setProductStock.mutate({ id: productId, stock: 0 });
   }
 
   return (
@@ -357,6 +385,12 @@ export function ProductsPage() {
         </p>
       )}
 
+      {setProductStock.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          No se pudo reactivar el producto: {setProductStock.error.message}
+        </p>
+      )}
+
       <div className="space-y-3">
         <div className="relative">
           <Search
@@ -407,11 +441,7 @@ export function ProductsPage() {
 
           {!hasActive ? null : view === 'products' ? (
             <Card>
-              <ul className="divide-y divide-border">
-                {list.map((p) => (
-                  <ProductRow key={p.id} product={p} />
-                ))}
-              </ul>
+              <SortableProductList products={list} reorderable={!isSearching} />
             </Card>
           ) : (
             sections.map((section) => {
@@ -450,32 +480,55 @@ export function ProductsPage() {
                   </button>
 
                   {isOpen && (
-                    <ul className="divide-y divide-border border-t border-border">
+                    <div className="border-t border-border">
                       {section.products.length === 0 && (
-                        <li className="px-4 py-3 text-sm text-muted-foreground">
+                        <p className="px-4 py-3 text-sm text-muted-foreground">
                           Este grupo no tiene productos.
-                        </li>
+                        </p>
                       )}
-                      {section.products.map((p) => (
-                        <ProductRow key={p.id} product={p} />
-                      ))}
+                      <SortableProductList
+                        products={section.products}
+                        reorderable={!isSearching}
+                      />
                       {section.group && (
-                        <li>
-                          <button
-                            type="button"
-                            onClick={() => setGroupModal(section.group)}
-                            className="flex w-full items-center justify-center gap-1.5 rounded-b-lg px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                          >
-                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                            Editar grupo
-                          </button>
-                        </li>
+                        <button
+                          type="button"
+                          onClick={() => setGroupModal(section.group)}
+                          className={cn(
+                            'flex w-full items-center justify-center gap-1.5 rounded-b-lg px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                            section.products.length > 0 && 'border-t border-border',
+                          )}
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                          Editar grupo
+                        </button>
                       )}
-                    </ul>
+                    </div>
                   )}
                 </Card>
               );
             })
+          )}
+
+          {inactiveList.length > 0 && (
+            <Card>
+              <div className="flex items-center gap-2 rounded-t-lg border-b border-border bg-muted/40 px-4 py-3">
+                <PowerOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-semibold text-muted-foreground">
+                  No se usan <span className="tabular-nums">({inactiveList.length})</span>
+                </p>
+              </div>
+              <ul className="divide-y divide-border">
+                {inactiveList.map((p) => (
+                  <InactiveRow
+                    key={p.id}
+                    product={p}
+                    onReactivate={handleReactivate}
+                    reactivating={setProductStock.isPending && setProductStock.variables?.id === p.id}
+                  />
+                ))}
+              </ul>
+            </Card>
           )}
 
           {archivedList.length > 0 && (

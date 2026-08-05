@@ -1,17 +1,19 @@
 import { cn } from '@/lib/utils';
 import { stockStatus, type StockStatus } from '@/features/products/constants';
 
-// Bajo umbral = rojo (como agotado); por encima = verde.
+// Bajo umbral = rojo (como agotado); por encima = verde; inactivo = gris.
 const DOT: Record<StockStatus, string> = {
   ok: 'bg-ok',
   low: 'bg-destructive',
   out: 'bg-destructive',
+  inactive: 'bg-muted-foreground',
 };
 
 const SR_LABEL: Record<StockStatus, string> = {
   ok: 'en stock',
   low: 'quedan pocos',
   out: 'sin stock',
+  inactive: 'no se usa',
 };
 
 interface StockBadgeProps {
@@ -33,7 +35,11 @@ export function StockBadge({ stock, minStock, className }: StockBadgeProps) {
       )}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', DOT[status])} aria-hidden="true" />
-      <span className="tabular-nums">{stock}</span>
+      {status === 'inactive' ? (
+        <span>No se usa</span>
+      ) : (
+        <span className="tabular-nums">{stock}</span>
+      )}
       <span className="sr-only"> unidades, {SR_LABEL[status]}</span>
     </span>
   );
