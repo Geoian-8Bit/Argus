@@ -1,10 +1,20 @@
 import { useState, type FormEvent } from 'react';
-import { UserPlus, Users as UsersIcon, ShieldCheck, CheckCircle2, Trash2 } from 'lucide-react';
+import {
+  UserPlus,
+  Users as UsersIcon,
+  ShieldCheck,
+  CheckCircle2,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+} from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 import type { Role } from '@/features/auth/useRole';
 import { useUsers, type UserProfile } from '@/features/users/useUsers';
 import { useCreateUser } from '@/features/users/useCreateUser';
 import { useUpdateUserRole } from '@/features/users/useUpdateUserRole';
+import { useUpdateUserDisplayName } from '@/features/users/useUpdateUserDisplayName';
 import { useDeleteUser } from '@/features/users/useDeleteUser';
 import {
   PageHeader,
@@ -78,6 +88,7 @@ function RoleSelect({
 
 function CreateUserForm() {
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('staff');
   const [done, setDone] = useState<string | null>(null);
@@ -88,9 +99,10 @@ function CreateUserForm() {
     event.preventDefault();
     setDone(null);
     try {
-      const user = await createUser.mutateAsync({ email, password, role });
-      setDone(user.email);
+      const user = await createUser.mutateAsync({ email, password, role, displayName });
+      setDone(user.displayName ?? user.email);
       setEmail('');
+      setDisplayName('');
       setPassword('');
       setRole('staff');
     } catch {
@@ -119,6 +131,20 @@ function CreateUserForm() {
                 setDone(null);
               }}
               placeholder="persona@empresa.com"
+              disabled={createUser.isPending}
+            />
+          </Field>
+
+          <Field label="Alias" hint="Se muestra en vez del email. Opcional.">
+            <Input
+              type="text"
+              autoComplete="off"
+              value={displayName}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setDone(null);
+              }}
+              placeholder="Nombre a mostrar"
               disabled={createUser.isPending}
             />
           </Field>
@@ -179,22 +205,81 @@ function CreateUserForm() {
 
 function UserRow({ user, isSelf }: { user: UserProfile; isSelf: boolean }) {
   const updateRole = useUpdateUserRole();
+  const updateDisplayName = useUpdateUserDisplayName();
   const deleteUser = useDeleteUser();
   const [confirming, setConfirming] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(user.displayName ?? '');
 
-  const error = updateRole.error ?? deleteUser.error;
+  const error = updateRole.error ?? deleteUser.error ?? updateDisplayName.error;
+
+  function startEditing() {
+    setDraftName(user.displayName ?? '');
+    setEditingName(true);
+  }
+
+  async function saveDisplayName() {
+    try {
+      await updateDisplayName.mutateAsync({ id: user.id, displayName: draftName });
+      setEditingName(false);
+    } catch {
+      // El error se muestra vía updateDisplayName.error
+    }
+  }
 
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
-          {user.email ?? 'Sin email'}
-          {isSelf && (
-            <Badge tone="brand" className="shrink-0">
-              Tú
-            </Badge>
-          )}
-        </p>
+        {editingName ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="Alias (vacío = mostrar email)"
+              disabled={updateDisplayName.isPending}
+              className="h-8 text-sm"
+            />
+            <IconButton
+              aria-label="Guardar alias"
+              className="h-8 w-8 shrink-0"
+              disabled={updateDisplayName.isPending}
+              onClick={() => void saveDisplayName()}
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              aria-label="Cancelar"
+              className="h-8 w-8 shrink-0"
+              disabled={updateDisplayName.isPending}
+              onClick={() => setEditingName(false)}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </IconButton>
+          </div>
+        ) : (
+          <>
+            <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+              <span className="truncate">{user.displayName || user.email || 'Sin email'}</span>
+              {isSelf && (
+                <Badge tone="brand" className="shrink-0">
+                  Tú
+                </Badge>
+              )}
+              <button
+                type="button"
+                aria-label="Editar alias"
+                onClick={startEditing}
+                className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </p>
+            {user.displayName && user.email && (
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            )}
+          </>
+        )}
         {error && (
           <span className="block text-xs text-destructive" role="alert">
             {error.message}
@@ -245,7 +330,7 @@ function UserRow({ user, isSelf }: { user: UserProfile; isSelf: boolean }) {
               }}
             />
             <IconButton
-              aria-label={`Eliminar ${user.email ?? 'usuario'}`}
+              aria-label={`Eliminar ${user.displayName || user.email || 'usuario'}`}
               className="h-9 w-9 hover:bg-destructive/10 hover:text-destructive"
               disabled={updateRole.isPending}
               onClick={() => setConfirming(true)}

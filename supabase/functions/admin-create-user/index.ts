@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   if (roleErr) return json({ error: roleErr.message }, 500);
   if (!isAdmin) return json({ error: 'Solo los administradores pueden crear usuarios' }, 403);
 
-  let body: { email?: unknown; password?: unknown; role?: unknown };
+  let body: { email?: unknown; password?: unknown; role?: unknown; displayName?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -62,6 +62,8 @@ Deno.serve(async (req) => {
     .toLowerCase();
   const password = String(body.password ?? '');
   const role = body.role === 'admin' ? 'admin' : 'staff';
+  const displayNameRaw = typeof body.displayName === 'string' ? body.displayName.trim() : '';
+  const displayName = displayNameRaw ? displayNameRaw : null;
 
   if (!EMAIL_RE.test(email)) return json({ error: 'Email no válido' }, 400);
   if (password.length < 8) {
@@ -85,10 +87,11 @@ Deno.serve(async (req) => {
     return json({ error: msg }, 400);
   }
 
-  // El trigger handle_new_user ya creó el perfil como "staff"; fijamos el rol elegido.
+  // El trigger handle_new_user ya creó el perfil como "staff"; fijamos el rol
+  // elegido y, si se indicó, el alias que se mostrará en vez del email.
   const { error: profileErr } = await admin
     .from('profiles')
-    .update({ role, email })
+    .update({ role, email, display_name: displayName })
     .eq('id', created.user.id);
   if (profileErr) {
     // Revertir: no dejamos un usuario huérfano si no se pudo asignar el rol.
@@ -96,5 +99,5 @@ Deno.serve(async (req) => {
     return json({ error: `No se pudo asignar el rol: ${profileErr.message}` }, 500);
   }
 
-  return json({ id: created.user.id, email, role }, 201);
+  return json({ id: created.user.id, email, role, displayName }, 201);
 });
