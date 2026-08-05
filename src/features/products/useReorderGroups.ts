@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { PositionUpdate } from './reorder';
 
-/** Reordena manualmente (arrastrar y soltar) un grupo de productos. */
-export function useReorderProducts() {
+/** Reordena manualmente (arrastrar y soltar) los grupos de productos. */
+export function useReorderGroups() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -11,24 +11,22 @@ export function useReorderProducts() {
       if (updates.length === 0) return;
       const results = await Promise.all(
         updates.map(({ id, position }) =>
-          supabase.from('products').update({ position }).eq('id', id),
+          supabase.from('product_groups').update({ position }).eq('id', id),
         ),
       );
       const failed = results.find((r) => r.error);
       if (failed?.error) throw new Error(failed.error.message);
     },
-    // Optimista: sin esto el listado "salta" al orden viejo mientras llega la
-    // respuesta y luego vuelve a moverse al orden nuevo.
     onMutate: async (updates) => {
-      await queryClient.cancelQueries({ queryKey: ['products'] });
-      const previous = queryClient.getQueriesData({ queryKey: ['products'] });
+      await queryClient.cancelQueries({ queryKey: ['product-groups'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['product-groups'] });
       const positionById = new Map(updates.map((u) => [u.id, u.position]));
-      queryClient.setQueriesData({ queryKey: ['products'] }, (old: unknown) => {
+      queryClient.setQueriesData({ queryKey: ['product-groups'] }, (old: unknown) => {
         if (!Array.isArray(old)) return old;
         return old
-          .map((p) => {
-            const pos = positionById.get(p.id);
-            return pos === undefined ? p : { ...p, position: pos };
+          .map((g) => {
+            const pos = positionById.get(g.id);
+            return pos === undefined ? g : { ...g, position: pos };
           })
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name));
       });
@@ -40,7 +38,7 @@ export function useReorderProducts() {
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['product-groups'] });
     },
   });
 }

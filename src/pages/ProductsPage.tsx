@@ -9,7 +9,6 @@ import {
   ChevronDown,
   QrCode,
   FolderPlus,
-  Pencil,
   Archive,
   RotateCcw,
   PowerOff,
@@ -21,6 +20,10 @@ import { INACTIVE_STOCK } from '@/features/products/constants';
 import { useProductGroups, type ProductGroup } from '@/features/products/useProductGroups';
 import { GroupModal } from '@/features/products/GroupModal';
 import { SortableProductList } from '@/features/products/SortableProductList';
+import {
+  SortableGroupSections,
+  type GroupSection,
+} from '@/features/products/SortableGroupSections';
 import {
   loadProductsListState,
   saveProductsListState,
@@ -52,14 +55,6 @@ const VIEWS: SegmentedOption<ProductsView>[] = [
   { value: 'groups', label: 'Grupos' },
   { value: 'products', label: 'Productos' },
 ];
-
-interface GroupSection {
-  key: string;
-  name: string;
-  /** Grupo real (ausente en "Sin grupo"), para poder editarlo. */
-  group?: ProductGroup;
-  products: Product[];
-}
 
 function ArchivedRow({
   product,
@@ -150,6 +145,9 @@ export function ProductsPage() {
   const [view, setView] = useState<ProductsView>(initialState.view);
   const [search, setSearch] = useState(initialState.search);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Los desactivados están siempre a la vista, pero plegados: se consultan de
+  // vez en cuando (para reactivar uno) y no deben tapar el listado normal.
+  const [inactiveOpen, setInactiveOpen] = useState(false);
   const debounced = useDebouncedValue(search, 250);
   const products = useProducts(debounced);
   const groupsQuery = useProductGroups();
@@ -445,89 +443,52 @@ export function ProductsPage() {
               <SortableProductList products={list} reorderable={!isSearching} />
             </Card>
           ) : (
-            sections.map((section) => {
-              // Durante una búsqueda se muestran abiertos todos los grupos con resultados.
-              const isOpen = isSearching || expanded.has(section.key);
-              const units = section.products.reduce((sum, p) => sum + p.stock, 0);
-              const value = section.products.reduce((sum, p) => sum + p.stock * p.price, 0);
-              return (
-                <Card key={section.key}>
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => {
-                      if (!isSearching) toggleGroup(section.key);
-                    }}
-                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{section.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {section.products.length}{' '}
-                        {section.products.length === 1 ? 'producto' : 'productos'} ·{' '}
-                        <span className="tabular-nums">{units}</span> uds
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
-                      {formatMoney(value)}
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out',
-                        isOpen && 'rotate-180',
-                      )}
-                      aria-hidden="true"
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t border-border">
-                      {section.products.length === 0 && (
-                        <p className="px-4 py-3 text-sm text-muted-foreground">
-                          Este grupo no tiene productos.
-                        </p>
-                      )}
-                      <SortableProductList products={section.products} reorderable={!isSearching} />
-                      {section.group && (
-                        <button
-                          type="button"
-                          onClick={() => setGroupModal(section.group)}
-                          className={cn(
-                            'flex w-full items-center justify-center gap-1.5 rounded-b-lg px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                            section.products.length > 0 && 'border-t border-border',
-                          )}
-                        >
-                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                          Editar grupo
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </Card>
-              );
-            })
+            <SortableGroupSections
+              sections={sections}
+              expanded={expanded}
+              isSearching={isSearching}
+              onToggle={toggleGroup}
+              onEditGroup={setGroupModal}
+            />
           )}
 
           {inactiveList.length > 0 && (
             <Card>
-              <div className="flex items-center gap-2 rounded-t-lg border-b border-border bg-muted/40 px-4 py-3">
-                <PowerOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <p className="text-sm font-semibold text-muted-foreground">
+              <button
+                type="button"
+                aria-expanded={inactiveOpen}
+                onClick={() => setInactiveOpen((open) => !open)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-t-lg bg-muted/40 px-4 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                  inactiveOpen ? 'border-b border-border' : 'rounded-b-lg',
+                )}
+              >
+                <PowerOff className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <p className="flex-1 text-sm font-semibold text-muted-foreground">
                   No se usan <span className="tabular-nums">({inactiveList.length})</span>
                 </p>
-              </div>
-              <ul className="divide-y divide-border">
-                {inactiveList.map((p) => (
-                  <InactiveRow
-                    key={p.id}
-                    product={p}
-                    onReactivate={handleReactivate}
-                    reactivating={
-                      setProductStock.isPending && setProductStock.variables?.id === p.id
-                    }
-                  />
-                ))}
-              </ul>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out',
+                    inactiveOpen && 'rotate-180',
+                  )}
+                  aria-hidden="true"
+                />
+              </button>
+              {inactiveOpen && (
+                <ul className="divide-y divide-border">
+                  {inactiveList.map((p) => (
+                    <InactiveRow
+                      key={p.id}
+                      product={p}
+                      onReactivate={handleReactivate}
+                      reactivating={
+                        setProductStock.isPending && setProductStock.variables?.id === p.id
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
             </Card>
           )}
 
