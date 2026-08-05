@@ -11,6 +11,7 @@ import {
 import { QrScanner } from '@/features/scan/QrScanner';
 import { useProductByCode } from '@/features/scan/useProductByCode';
 import { useRegisterMovement } from '@/features/movements/useRegisterMovement';
+import { INACTIVE_STOCK } from '@/features/products/constants';
 import { useRole } from '@/features/auth/useRole';
 import {
   PageHeader,
@@ -83,7 +84,7 @@ export function ScanPage() {
   const priceValid = Number.isFinite(priceNum) && priceNum >= 0 && salePrice.trim() !== '';
   // El staff no introduce precio: se usa el precio base del producto.
   const showPriceField = isSale && isAdmin;
-  const isInactive = product?.stock === -1;
+  const isInactive = product?.stock === INACTIVE_STOCK;
   const canConfirm = !isInactive && qtyValid && (!showPriceField || priceValid);
 
   async function handleConfirm() {

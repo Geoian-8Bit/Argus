@@ -16,6 +16,7 @@ import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useSetProductStock } from '@/features/products/useSetProductStock';
+import { INACTIVE_STOCK } from '@/features/products/constants';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { useRegisterMovement, type MovementType } from '@/features/movements/useRegisterMovement';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
@@ -163,7 +164,7 @@ export function ProductDetailPage() {
   }
 
   const isArchived = Boolean(product.archived_at);
-  const isInactive = product.stock === -1;
+  const isInactive = product.stock === INACTIVE_STOCK;
   const adjustQtyNum = Math.trunc(Number(adjustQty));
   const adjustQtyValid = Number.isFinite(adjustQtyNum) && adjustQtyNum >= 1;
   const reactivateStockNum = Math.trunc(Number(reactivateStock));
@@ -172,7 +173,7 @@ export function ProductDetailPage() {
   async function handleDeactivate() {
     if (!product) return;
     try {
-      await setProductStock.mutateAsync({ id: product.id, stock: -1 });
+      await setProductStock.mutateAsync({ id: product.id, stock: INACTIVE_STOCK });
       setConfirmDeactivate(false);
     } catch {
       // El error se muestra vía setProductStock.error
@@ -415,8 +416,7 @@ export function ProductDetailPage() {
             <strong className="text-foreground tabular-nums">
               {isInactive ? 'No se usa' : product.stock}
             </strong>
-            . Se ajusta con entradas y salidas o con «Ajustar stock» arriba, no en este
-            formulario.
+            . Se ajusta con entradas y salidas o con «Ajustar stock» arriba, no en este formulario.
           </div>
 
           {(updateProduct.isError || createGroup.isError) && (
@@ -467,8 +467,8 @@ export function ProductDetailPage() {
               <h3 className="px-1 font-display text-sm font-semibold">Reactivar producto</h3>
               <Card className="space-y-3 p-4">
                 <p className="text-sm text-muted-foreground">
-                  Dale un stock inicial para volver a usarlo. Podrás ajustarlo después con
-                  «Ajustar stock».
+                  Dale un stock inicial para volver a usarlo. Podrás ajustarlo después con «Ajustar
+                  stock».
                 </p>
                 <Field label="Stock inicial">
                   <Input
@@ -500,9 +500,8 @@ export function ProductDetailPage() {
               <h3 className="px-1 font-display text-sm font-semibold">Desactivar producto</h3>
               <Card className="space-y-3 p-4">
                 <p className="text-sm text-muted-foreground">
-                  Para productos que ya no se usan pero no quieres eliminar. Desaparece del
-                  listado y de los avisos de stock bajo/agotado; se puede reactivar cuando haga
-                  falta.
+                  Para productos que ya no se usan pero no quieres eliminar. Desaparece del listado
+                  y de los avisos de stock bajo/agotado; se puede reactivar cuando haga falta.
                 </p>
                 {confirmDeactivate ? (
                   <div className="flex items-center gap-2">
@@ -533,7 +532,7 @@ export function ProductDetailPage() {
                     Desactivar producto
                   </Button>
                 )}
-                {setProductStock.isError && !confirmDeactivate && (
+                {setProductStock.isError && (
                   <p className="text-sm text-destructive" role="alert">
                     {setProductStock.error.message}
                   </p>

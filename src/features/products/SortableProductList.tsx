@@ -46,11 +46,27 @@ export function SortableProductList({ products, reorderable = true }: SortablePr
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
   );
 
+  // Lo que se está pintando ahora mismo: el orden local si hay una mutación en
+  // vuelo, si no el que llega por props. El arrastre se calcula sobre este
+  // mismo array para que índices y ids no puedan desincronizarse.
   const ordered = localOrder
-    ? ((localOrder
-        .map((id) => products.find((p) => p.id === id))
-        .filter(Boolean) as Product[]))
+    ? (localOrder.map((id) => products.find((p) => p.id === id)).filter(Boolean) as Product[])
     : products;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = ordered.map((p) => p.id);
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newIds = arrayMove(ids, oldIndex, newIndex);
+    setLocalOrder(newIds);
+    reorder.mutate(
+      { ids: newIds, positions: ascendingPositions(ordered) },
+      { onSettled: () => setLocalOrder(null) },
+    );
+  }
 
   if (!reorderable) {
     return (
@@ -60,19 +76,6 @@ export function SortableProductList({ products, reorderable = true }: SortablePr
         ))}
       </ul>
     );
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const ids = products.map((p) => p.id);
-    const oldIndex = ids.indexOf(String(active.id));
-    const newIndex = ids.indexOf(String(over.id));
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newIds = arrayMove(ids, oldIndex, newIndex);
-    setLocalOrder(newIds);
-    const positions = products.map((p) => p.position ?? 0).sort((a, b) => a - b);
-    reorder.mutate({ ids: newIds, positions }, { onSettled: () => setLocalOrder(null) });
   }
 
   return (
@@ -86,6 +89,21 @@ export function SortableProductList({ products, reorderable = true }: SortablePr
       </SortableContext>
     </DndContext>
   );
+}
+
+/**
+ * Positions que ya usa el subconjunto mostrado, en orden ascendente y sin
+ * repetidos. Si dos productos comparten position (o no la tienen), se separan
+ * sumando 1 al anterior: de lo contrario el orden guardado sería ambiguo y las
+ * filas «saltarían» al recargar.
+ */
+function ascendingPositions(products: Product[]): number[] {
+  const sorted = products.map((p, i) => p.position ?? i).sort((a, b) => a - b);
+  return sorted.reduce<number[]>((acc, pos) => {
+    const prev = acc[acc.length - 1];
+    acc.push(prev === undefined || pos > prev ? pos : prev + 1);
+    return acc;
+  }, []);
 }
 
 function RowContent({ product }: { product: Product }) {
@@ -133,10 +151,7 @@ function SortableRow({ product }: { product: Product }) {
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        'flex items-center gap-1 bg-card',
-        isDragging && 'relative z-10 shadow-md',
-      )}
+      className={cn('flex items-center gap-1 bg-card', isDragging && 'relative z-10 shadow-md')}
     >
       <button
         type="button"

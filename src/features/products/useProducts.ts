@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
+import { INACTIVE_STOCK } from './constants';
 
 export type Product = Tables<'products'>;
 
@@ -21,7 +22,7 @@ export function useProducts(search = '') {
         query = query.or(`code.ilike.${like},name.ilike.${like}`);
       } else {
         // Navegando: solo productos activos y en uso (stock -1 = desactivado).
-        query = query.is('archived_at', null).neq('stock', -1);
+        query = query.is('archived_at', null).neq('stock', INACTIVE_STOCK);
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);

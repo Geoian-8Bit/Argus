@@ -17,6 +17,7 @@ import {
 import { useProducts, type Product } from '@/features/products/useProducts';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useSetProductStock } from '@/features/products/useSetProductStock';
+import { INACTIVE_STOCK } from '@/features/products/constants';
 import { useProductGroups, type ProductGroup } from '@/features/products/useProductGroups';
 import { GroupModal } from '@/features/products/GroupModal';
 import { SortableProductList } from '@/features/products/SortableProductList';
@@ -238,12 +239,12 @@ export function ProductsPage() {
   // no cuentan en los totales de stock/valor.
   const rawList = useMemo(() => products.data ?? [], [products.data]);
   const list = useMemo(
-    () => rawList.filter((p) => !p.archived_at && p.stock !== -1),
+    () => rawList.filter((p) => !p.archived_at && p.stock !== INACTIVE_STOCK),
     [rawList],
   );
   const archivedList = useMemo(() => rawList.filter((p) => p.archived_at), [rawList]);
   const inactiveList = useMemo(
-    () => rawList.filter((p) => !p.archived_at && p.stock === -1),
+    () => rawList.filter((p) => !p.archived_at && p.stock === INACTIVE_STOCK),
     [rawList],
   );
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
@@ -486,10 +487,7 @@ export function ProductsPage() {
                           Este grupo no tiene productos.
                         </p>
                       )}
-                      <SortableProductList
-                        products={section.products}
-                        reorderable={!isSearching}
-                      />
+                      <SortableProductList products={section.products} reorderable={!isSearching} />
                       {section.group && (
                         <button
                           type="button"
@@ -524,7 +522,9 @@ export function ProductsPage() {
                     key={p.id}
                     product={p}
                     onReactivate={handleReactivate}
-                    reactivating={setProductStock.isPending && setProductStock.variables?.id === p.id}
+                    reactivating={
+                      setProductStock.isPending && setProductStock.variables?.id === p.id
+                    }
                   />
                 ))}
               </ul>
