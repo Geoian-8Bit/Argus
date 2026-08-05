@@ -57,16 +57,19 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          position: number | null;
         };
         Insert: {
           created_at?: string;
           id?: string;
           name: string;
+          position?: number | null;
         };
         Update: {
           created_at?: string;
           id?: string;
           name?: string;
+          position?: number | null;
         };
         Relationships: [];
       };

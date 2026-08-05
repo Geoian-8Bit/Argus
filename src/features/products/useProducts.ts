@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
-import { INACTIVE_STOCK } from './constants';
 
 export type Product = Tables<'products'>;
 
@@ -16,13 +15,15 @@ export function useProducts(search = '') {
         .order('position', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
       if (term) {
-        // Buscando: incluye también los archivados y desactivados (se marcan
-        // aparte) para poder encontrarlos y reactivarlos.
+        // Buscando: incluye también los archivados (se marcan aparte) para
+        // poder encontrarlos y reactivarlos.
         const like = `%${term}%`;
         query = query.or(`code.ilike.${like},name.ilike.${like}`);
       } else {
-        // Navegando: solo productos activos y en uso (stock -1 = desactivado).
-        query = query.is('archived_at', null).neq('stock', INACTIVE_STOCK);
+        // Navegando: todo lo no archivado. Los desactivados (stock = -1) llegan
+        // también, y el listado los separa en su propia sección "No se usan":
+        // si no, no habría forma de encontrarlos salvo buscándolos por nombre.
+        query = query.is('archived_at', null);
       }
       const { data, error } = await query;
       if (error) throw new Error(error.message);

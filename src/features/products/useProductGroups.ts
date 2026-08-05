@@ -8,9 +8,11 @@ export function useProductGroups() {
   return useQuery({
     queryKey: ['product-groups', 'list'],
     queryFn: async (): Promise<ProductGroup[]> => {
+      // Orden manual (arrastrar y soltar); el nombre solo desempata.
       const { data, error } = await supabase
         .from('product_groups')
         .select('*')
+        .order('position', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
       if (error) throw new Error(error.message);
       return data ?? [];
