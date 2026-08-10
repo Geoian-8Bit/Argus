@@ -11,6 +11,7 @@ export type Database = {
       movements: {
         Row: {
           created_at: string;
+          customer: string | null;
           id: string;
           note: string | null;
           product_id: string;
@@ -19,9 +20,11 @@ export type Database = {
           unit_price: number | null;
           user_email: string | null;
           user_id: string | null;
+          warehouse_id: string;
         };
         Insert: {
           created_at?: string;
+          customer?: string | null;
           id?: string;
           note?: string | null;
           product_id: string;
@@ -30,9 +33,11 @@ export type Database = {
           unit_price?: number | null;
           user_email?: string | null;
           user_id?: string | null;
+          warehouse_id: string;
         };
         Update: {
           created_at?: string;
+          customer?: string | null;
           id?: string;
           note?: string | null;
           product_id?: string;
@@ -41,13 +46,28 @@ export type Database = {
           unit_price?: number | null;
           user_email?: string | null;
           user_id?: string | null;
+          warehouse_id?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'movements_product_id_fkey';
             columns: ['product_id'];
             isOneToOne: false;
+            referencedRelation: 'product_stats';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'movements_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
             referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'movements_warehouse_id_fkey';
+            columns: ['warehouse_id'];
+            isOneToOne: false;
+            referencedRelation: 'warehouses';
             referencedColumns: ['id'];
           },
         ];
@@ -58,20 +78,31 @@ export type Database = {
           id: string;
           name: string;
           position: number | null;
+          warehouse_id: string;
         };
         Insert: {
           created_at?: string;
           id?: string;
           name: string;
           position?: number | null;
+          warehouse_id: string;
         };
         Update: {
           created_at?: string;
           id?: string;
           name?: string;
           position?: number | null;
+          warehouse_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'product_groups_warehouse_id_fkey';
+            columns: ['warehouse_id'];
+            isOneToOne: false;
+            referencedRelation: 'warehouses';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       products: {
         Row: {
@@ -85,9 +116,11 @@ export type Database = {
           notes: string | null;
           position: number | null;
           price: number;
+          sale_kind: Database['public']['Enums']['sale_kind'];
           stock: number;
           updated_at: string;
           variant: string | null;
+          warehouse_id: string;
         };
         Insert: {
           archived_at?: string | null;
@@ -100,9 +133,11 @@ export type Database = {
           notes?: string | null;
           position?: number | null;
           price?: number;
+          sale_kind?: Database['public']['Enums']['sale_kind'];
           stock?: number;
           updated_at?: string;
           variant?: string | null;
+          warehouse_id: string;
         };
         Update: {
           archived_at?: string | null;
@@ -115,9 +150,11 @@ export type Database = {
           notes?: string | null;
           position?: number | null;
           price?: number;
+          sale_kind?: Database['public']['Enums']['sale_kind'];
           stock?: number;
           updated_at?: string;
           variant?: string | null;
+          warehouse_id?: string;
         };
         Relationships: [
           {
@@ -125,6 +162,13 @@ export type Database = {
             columns: ['group_id'];
             isOneToOne: false;
             referencedRelation: 'product_groups';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'products_warehouse_id_fkey';
+            columns: ['warehouse_id'];
+            isOneToOne: false;
+            referencedRelation: 'warehouses';
             referencedColumns: ['id'];
           },
         ];
@@ -180,6 +224,56 @@ export type Database = {
         };
         Relationships: [];
       };
+      warehouse_members: {
+        Row: {
+          created_at: string;
+          user_id: string;
+          warehouse_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          user_id: string;
+          warehouse_id: string;
+        };
+        Update: {
+          created_at?: string;
+          user_id?: string;
+          warehouse_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'warehouse_members_warehouse_id_fkey';
+            columns: ['warehouse_id'];
+            isOneToOne: false;
+            referencedRelation: 'warehouses';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      warehouses: {
+        Row: {
+          archived_at: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          position: number | null;
+        };
+        Insert: {
+          archived_at?: string | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          position?: number | null;
+        };
+        Update: {
+          archived_at?: string | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          position?: number | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       product_stats: {
@@ -194,20 +288,32 @@ export type Database = {
           movements_count: number | null;
           name: string | null;
           price: number | null;
+          sale_kind: Database['public']['Enums']['sale_kind'] | null;
           stock: number | null;
           total_in: number | null;
           total_out: number | null;
           total_revenue: number | null;
           variant: string | null;
+          warehouse_id: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'products_warehouse_id_fkey';
+            columns: ['warehouse_id'];
+            isOneToOne: false;
+            referencedRelation: 'warehouses';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Functions: {
-      [_ in never]: never;
+      can_access_warehouse: { Args: { target: string }; Returns: boolean };
+      is_admin: { Args: never; Returns: boolean };
     };
     Enums: {
       movement_type: 'in' | 'out';
+      sale_kind: 'contrato' | 'pieza';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -334,6 +440,7 @@ export const Constants = {
   public: {
     Enums: {
       movement_type: ['in', 'out'],
+      sale_kind: ['contrato', 'pieza'],
     },
   },
 } as const;

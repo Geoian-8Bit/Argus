@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export type MovementType = Tables<'movements'>['type'];
 
@@ -9,6 +10,7 @@ export interface MovementWithProduct {
   type: MovementType;
   qty: number;
   note: string | null;
+  customer: string | null;
   created_at: string;
   user_id: string | null;
   user_email: string | null;
@@ -25,12 +27,17 @@ export interface MovementsFilter {
 }
 
 export function useMovements({ limit = 1000, from, to }: MovementsFilter = {}) {
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['movements', 'list', limit, from ?? null, to ?? null],
+    queryKey: ['movements', 'list', currentId, limit, from ?? null, to ?? null],
+    enabled: !!currentId,
     queryFn: async (): Promise<MovementWithProduct[]> => {
       let query = supabase
         .from('movements')
-        .select('id,type,qty,note,created_at,user_id,user_email, products(name,variant,code)')
+        .select(
+          'id,type,qty,note,customer,created_at,user_id,user_email, products(name,variant,code)',
+        )
+        .eq('warehouse_id', currentId!)
         .order('created_at', { ascending: false });
       if (from) query = query.gte('created_at', from);
       if (to) query = query.lt('created_at', to);

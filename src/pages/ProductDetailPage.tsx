@@ -16,7 +16,11 @@ import { useUpdateProduct } from '@/features/products/useUpdateProduct';
 import { useArchiveProduct } from '@/features/products/useArchiveProduct';
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useSetProductStock } from '@/features/products/useSetProductStock';
-import { INACTIVE_STOCK } from '@/features/products/constants';
+import {
+  INACTIVE_STOCK,
+  DEFAULT_SALE_KIND,
+  SALE_KIND_OPTIONS,
+} from '@/features/products/constants';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { useRegisterMovement, type MovementType } from '@/features/movements/useRegisterMovement';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
@@ -31,7 +35,9 @@ import {
   Spinner,
   StockBadge,
   EmptyState,
+  Segmented,
 } from '@/components/ui';
+import type { Enums } from '@/lib/database.types';
 
 export function ProductDetailPage() {
   const { id } = useParams();
@@ -50,6 +56,7 @@ export function ProductDetailPage() {
   const [notes, setNotes] = useState('');
   const [price, setPrice] = useState('');
   const [minStock, setMinStock] = useState('');
+  const [saleKind, setSaleKind] = useState<Enums<'sale_kind'>>(DEFAULT_SALE_KIND);
   const [group, setGroup] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [saved, setSaved] = useState(false);
@@ -75,6 +82,7 @@ export function ProductDetailPage() {
       setNotes(product.notes ?? '');
       setPrice(String(Number(product.price) || 0));
       setMinStock(String(product.min_stock ?? 0));
+      setSaleKind(product.sale_kind ?? DEFAULT_SALE_KIND);
       setGroup(product.group_id ?? '');
       setNewGroupName('');
     }
@@ -114,6 +122,7 @@ export function ProductDetailPage() {
     notes !== (product.notes ?? '') ||
     (Number(price) || 0) !== (Number(product.price) || 0) ||
     (Math.trunc(Number(minStock)) || 0) !== (product.min_stock ?? 0) ||
+    saleKind !== (product.sale_kind ?? DEFAULT_SALE_KIND) ||
     groupDirty;
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -135,6 +144,7 @@ export function ProductDetailPage() {
         price: Math.max(0, Number(price) || 0),
         minStock: Math.max(0, Math.trunc(Number(minStock)) || 0),
         groupId,
+        saleKind,
       });
       setSaved(true);
     } catch {
@@ -368,6 +378,17 @@ export function ProductDetailPage() {
             }}
             disabled={updateProduct.isPending || createGroup.isPending}
           />
+          <Field label="Tipo" hint="Parte las ventas del panel en contratos y piezas">
+            <Segmented
+              ariaLabel="Tipo de artículo"
+              value={saleKind}
+              onChange={(next) => {
+                setSaleKind(next);
+                setSaved(false);
+              }}
+              options={SALE_KIND_OPTIONS}
+            />
+          </Field>
           <Field label="Precio base (€/ud)" hint="PVP de referencia para ventas y valor de almacén">
             <Input
               type="number"

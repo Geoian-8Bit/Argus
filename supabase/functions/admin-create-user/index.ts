@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
     .trim()
     .toLowerCase();
   const password = String(body.password ?? '');
-  const role = body.role === 'admin' ? 'admin' : 'staff';
+  // Cualquier valor desconocido cae al rol con menos permisos.
+  const role = body.role === 'admin' || body.role === 'comercial' ? (body.role as string) : 'staff';
   const displayNameRaw = typeof body.displayName === 'string' ? body.displayName.trim() : '';
   const displayName = displayNameRaw ? displayNameRaw : null;
 

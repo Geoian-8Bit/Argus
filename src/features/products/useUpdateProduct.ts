@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Tables } from '@/lib/database.types';
+import type { Enums, Tables } from '@/lib/database.types';
 import { productKey } from './useProduct';
 
 export interface UpdateProductInput {
@@ -15,6 +15,8 @@ export interface UpdateProductInput {
   minStock?: number;
   /** Grupo al que pertenece el producto (null = sin grupo). */
   groupId?: string | null;
+  /** Contrato o pieza: parte las ventas en el panel. */
+  saleKind?: Enums<'sale_kind'>;
 }
 
 export function useUpdateProduct() {
@@ -46,6 +48,7 @@ export function useUpdateProduct() {
           price,
           min_stock: minStock,
           group_id: input.groupId ?? null,
+          ...(input.saleKind ? { sale_kind: input.saleKind } : {}),
         })
         .eq('id', input.id)
         .select()
@@ -53,7 +56,7 @@ export function useUpdateProduct() {
 
       if (error) {
         if (error.code === '23505') {
-          throw new Error(`Ya existe un producto con el código "${code}".`);
+          throw new Error(`Ya existe un producto con el código "${code}" en este almacén.`);
         }
         throw new Error(error.message);
       }

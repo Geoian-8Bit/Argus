@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export interface ActivityDay {
   key: string;
@@ -14,8 +15,10 @@ const WEEKDAYS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
 // Movimientos agregados por día de los últimos `days` días (para el gráfico).
 export function useActivity(days = 7) {
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['dashboard', 'activity', days],
+    queryKey: ['dashboard', 'activity', currentId, days],
+    enabled: !!currentId,
     queryFn: async (): Promise<ActivityDay[]> => {
       const since = new Date();
       since.setHours(0, 0, 0, 0);
@@ -24,6 +27,7 @@ export function useActivity(days = 7) {
       const { data, error } = await supabase
         .from('movements')
         .select('type,qty,created_at')
+        .eq('warehouse_id', currentId!)
         .gte('created_at', since.toISOString());
       if (error) throw new Error(error.message);
 

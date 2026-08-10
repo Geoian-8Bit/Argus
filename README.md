@@ -68,22 +68,21 @@ supabase/
 .github/workflows/ci.yml      # Lint + typecheck + tests + build
 ```
 
-## Modelo de datos (esquema inicial)
+## Modelo de datos
 
-- **`products`** — `code` (único), `name`, `variant`, `stock`, `notes`.
-- **`movements`** — `product_id`, `type` (`in|out`), `qty`, `user_id`, `note`.
-- Trigger `apply_movement_to_stock` actualiza `products.stock` al insertar un movimiento.
+- **`warehouses`** — almacenes independientes. Cada uno tiene sus propios productos y movimientos; no hay jerarquía entre ellos.
+- **`warehouse_members`** — quién accede a qué almacén. Un admin accede a todos sin estar aquí.
+- **`products`** — `warehouse_id`, `code` (único dentro del almacén), `name`, `variant`, `stock`, `price`, `min_stock`, `sale_kind` (`contrato|pieza`), `notes`.
+- **`movements`** — `warehouse_id`, `product_id`, `type` (`in|out`), `qty`, `user_id`, `customer`, `unit_price`, `note`.
+- **`profiles`** — `role`: `admin`, `staff` o `comercial`.
+- Trigger `apply_movement_to_stock` actualiza `products.stock` al insertar un movimiento; `set_movement_warehouse` copia el almacén desde el producto.
 
 ## Próximos pasos
 
-1. Crear el proyecto en Supabase y aplicar la migración (vía MCP o `supabase` CLI).
-2. Generar tipos reales: `supabase gen types typescript --project-id <ref> > src/lib/database.types.ts`.
-3. Implementar pantalla de Login (Supabase Auth).
-4. Implementar `ScanPage` con `html5-qrcode` y conexión al cliente Supabase.
-5. Implementar CRUD de productos y registro de movimientos.
-6. Generación + visualización del QR del producto.
-7. (v2) Soporte offline con IndexedDB.
-8. (v2) Impresión a etiqueta térmica.
+1. Artículos especiales de los comerciales (margen). Pendiente de definir con Nerea; ver `docs/subalmacenes-comerciales.md`.
+2. Informe diario en la app, exportable con el formato del papel actual. Pendiente de conseguir la plantilla.
+3. (v2) Soporte offline con IndexedDB.
+4. (v2) Impresión a etiqueta térmica.
 
 ## Documentación de referencia
 
