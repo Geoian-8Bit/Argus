@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeSales, type SaleProduct, type SaleRow } from './useSales';
+import { summarizeSales, type SaleProduct, type SaleRow } from './sales';
 
 const products: SaleProduct[] = [
   { id: 'contrato-1', price: 100, sale_kind: 'contrato' },
