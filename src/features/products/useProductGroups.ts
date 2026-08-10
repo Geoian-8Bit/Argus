@@ -1,17 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export type ProductGroup = Tables<'product_groups'>;
 
 export function useProductGroups() {
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['product-groups', 'list'],
+    queryKey: ['product-groups', 'list', currentId],
+    enabled: !!currentId,
     queryFn: async (): Promise<ProductGroup[]> => {
       // Orden manual (arrastrar y soltar); el nombre solo desempata.
       const { data, error } = await supabase
         .from('product_groups')
         .select('*')
+        .eq('warehouse_id', currentId!)
         .order('position', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
       if (error) throw new Error(error.message);
@@ -31,12 +35,16 @@ export interface SaveProductGroupInput {
 /** Crea o edita un grupo y sincroniza qué productos pertenecen a él. */
 export function useSaveProductGroup() {
   const queryClient = useQueryClient();
+  const { currentId } = useWarehouse();
 
   return useMutation({
     mutationFn: async (input: SaveProductGroupInput): Promise<ProductGroup> => {
       const name = input.name.trim();
       if (!name) {
         throw new Error('El nombre del grupo es obligatorio.');
+      }
+      if (!currentId) {
+        throw new Error('No hay un almacén seleccionado.');
       }
 
       let group: ProductGroup;
@@ -55,7 +63,7 @@ export function useSaveProductGroup() {
       } else {
         const { data, error } = await supabase
           .from('product_groups')
-          .insert({ name })
+          .insert({ name, warehouse_id: currentId })
           .select()
           .single();
         if (error) {
@@ -111,6 +119,7 @@ export function useDeleteProductGroup() {
 
 export function useCreateProductGroup() {
   const queryClient = useQueryClient();
+  const { currentId } = useWarehouse();
 
   return useMutation({
     mutationFn: async (name: string): Promise<ProductGroup> => {
@@ -118,9 +127,12 @@ export function useCreateProductGroup() {
       if (!trimmed) {
         throw new Error('El nombre del grupo es obligatorio.');
       }
+      if (!currentId) {
+        throw new Error('No hay un almacén seleccionado.');
+      }
       const { data, error } = await supabase
         .from('product_groups')
-        .insert({ name: trimmed })
+        .insert({ name: trimmed, warehouse_id: currentId })
         .select()
         .single();
 
@@ -129,7 +141,8 @@ export function useCreateProductGroup() {
         if (error.code === '23505') {
           const { data: groups, error: selectError } = await supabase
             .from('product_groups')
-            .select('*');
+            .select('*')
+            .eq('warehouse_id', currentId);
           const existing = (groups ?? []).find(
             (g) => g.name.toLowerCase() === trimmed.toLowerCase(),
           );

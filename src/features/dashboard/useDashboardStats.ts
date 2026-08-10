@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { INACTIVE_STOCK } from '@/features/products/constants';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export interface DashboardStats {
   totalProducts: number;
@@ -9,8 +10,10 @@ export interface DashboardStats {
 }
 
 export function useDashboardStats() {
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['dashboard', 'stats'],
+    queryKey: ['dashboard', 'stats', currentId],
+    enabled: !!currentId,
     queryFn: async (): Promise<DashboardStats> => {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
@@ -22,6 +25,7 @@ export function useDashboardStats() {
         supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
+          .eq('warehouse_id', currentId!)
           .is('archived_at', null)
           .neq('stock', INACTIVE_STOCK),
         // Sin stock o bajo umbral (flags is_out / is_low de la vista). Los
@@ -29,11 +33,13 @@ export function useDashboardStats() {
         supabase
           .from('product_stats')
           .select('*', { count: 'exact', head: true })
+          .eq('warehouse_id', currentId!)
           .is('archived_at', null)
           .or('is_low.eq.true,is_out.eq.true'),
         supabase
           .from('movements')
           .select('*', { count: 'exact', head: true })
+          .eq('warehouse_id', currentId!)
           .gte('created_at', iso),
       ]);
 

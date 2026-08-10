@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   UserPlus,
   Users as UsersIcon,
@@ -16,6 +17,8 @@ import { useCreateUser } from '@/features/users/useCreateUser';
 import { useUpdateUserRole } from '@/features/users/useUpdateUserRole';
 import { useUpdateUserDisplayName } from '@/features/users/useUpdateUserDisplayName';
 import { useDeleteUser } from '@/features/users/useDeleteUser';
+import { useWarehouses } from '@/features/warehouses/useWarehouses';
+import { useAddWarehouseMember } from '@/features/warehouses/useWarehouseAdmin';
 import {
   PageHeader,
   Card,
@@ -24,6 +27,7 @@ import {
   CardContent,
   Field,
   Input,
+  Select,
   Button,
   Badge,
   EmptyState,
@@ -35,8 +39,19 @@ import { cn } from '@/lib/utils';
 
 const ROLES: { value: Role; label: string; hint: string }[] = [
   { value: 'staff', label: 'Staff', hint: 'Solo escanea: entradas y salidas de stock.' },
+  {
+    value: 'comercial',
+    label: 'Comercial',
+    hint: 'Registra movimientos a mano sobre su almacén y ve sus ventas.',
+  },
   { value: 'admin', label: 'Admin', hint: 'Acceso total: panel, productos, historial y usuarios.' },
 ];
+
+const ROLE_LABEL: Record<Role, string> = {
+  admin: 'Admin',
+  staff: 'Staff',
+  comercial: 'Comercial',
+};
 
 // Selector segmentado de rol, reutilizado en el formulario y en cada fila.
 function RoleSelect({
@@ -91,22 +106,31 @@ function CreateUserForm() {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('staff');
+  const [warehouseId, setWarehouseId] = useState('');
   const [done, setDone] = useState<string | null>(null);
 
   const createUser = useCreateUser();
+  const warehouses = useWarehouses();
+  const addMember = useAddWarehouseMember();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setDone(null);
     try {
       const user = await createUser.mutateAsync({ email, password, role, displayName });
+      // Sin almacén no vería nada al entrar, así que se le da acceso aquí
+      // mismo. Un admin los ve todos y no necesita pertenecer a ninguno.
+      if (warehouseId && role !== 'admin') {
+        await addMember.mutateAsync({ warehouseId, userId: user.id });
+      }
       setDone(user.displayName ?? user.email);
       setEmail('');
       setDisplayName('');
       setPassword('');
       setRole('staff');
+      setWarehouseId('');
     } catch {
-      // El error queda expuesto vía createUser.error.
+      // El error queda expuesto vía createUser.error / addMember.error.
     }
   }
 
@@ -181,9 +205,29 @@ function CreateUserForm() {
             </span>
           </Field>
 
-          {createUser.isError && (
+          {role !== 'admin' && (
+            <Field
+              label="Almacén"
+              hint="Sin almacén no verá nada al entrar. Se puede cambiar después en Almacenes."
+            >
+              <Select
+                value={warehouseId}
+                onChange={(e) => setWarehouseId(e.target.value)}
+                disabled={createUser.isPending || warehouses.isLoading}
+              >
+                <option value="">Sin almacén</option>
+                {(warehouses.data ?? []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+
+          {(createUser.isError || addMember.isError) && (
             <p className="text-sm text-destructive" role="alert">
-              {createUser.error.message}
+              {createUser.error?.message ?? addMember.error?.message}
             </p>
           )}
 
@@ -194,7 +238,7 @@ function CreateUserForm() {
             </p>
           )}
 
-          <Button type="submit" loading={createUser.isPending}>
+          <Button type="submit" loading={createUser.isPending || addMember.isPending}>
             Crear usuario
           </Button>
         </form>
@@ -294,7 +338,7 @@ function UserRow({ user, isSelf }: { user: UserProfile; isSelf: boolean }) {
           // (riesgo de quedarse fuera).
           <Badge tone={user.role === 'admin' ? 'ok' : 'neutral'} className="gap-1">
             {user.role === 'admin' && <ShieldCheck className="h-3 w-3" aria-hidden="true" />}
-            {user.role === 'admin' ? 'Admin' : 'Staff'}
+            {ROLE_LABEL[user.role]}
           </Badge>
         ) : confirming ? (
           <>
@@ -353,6 +397,14 @@ export function UsersPage() {
       <PageHeader
         title="Usuarios"
         subtitle="Crea cuentas y define su rol sin pasar por Supabase."
+        action={
+          <Link
+            to="/warehouses"
+            className="text-xs font-medium text-brand underline-offset-2 hover:underline"
+          >
+            Almacenes
+          </Link>
+        }
       />
 
       <CreateUserForm />

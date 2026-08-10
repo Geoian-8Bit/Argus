@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Role } from '@/features/auth/useRole';
+import { ROLES, type Role } from '@/features/auth/useRole';
 
 export interface UserProfile {
   id: string;
@@ -25,7 +25,7 @@ export function useUsers() {
         id: p.id,
         email: p.email,
         displayName: p.display_name,
-        role: p.role === 'admin' ? 'admin' : 'staff',
+        role: ROLES.includes(p.role as Role) ? (p.role as Role) : 'staff',
         created_at: p.created_at,
       }));
     },

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export type AlertProduct = Tables<'product_stats'>;
 
@@ -10,13 +11,15 @@ export type AlertProduct = Tables<'product_stats'>;
  * excluyen a nivel de vista, pero se filtra también aquí por claridad.
  */
 export function useAlertProducts(enabled = true) {
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['dashboard', 'alert-products'],
-    enabled,
+    queryKey: ['dashboard', 'alert-products', currentId],
+    enabled: enabled && !!currentId,
     queryFn: async (): Promise<AlertProduct[]> => {
       const { data, error } = await supabase
         .from('product_stats')
         .select('*')
+        .eq('warehouse_id', currentId!)
         .is('archived_at', null)
         .or('is_low.eq.true,is_out.eq.true')
         .order('stock', { ascending: true });

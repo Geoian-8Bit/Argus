@@ -9,9 +9,14 @@ import {
 import { useRestoreProduct } from '@/features/products/useRestoreProduct';
 import { useCreateProductGroup } from '@/features/products/useProductGroups';
 import { GroupSelect, NEW_GROUP } from '@/features/products/GroupSelect';
-import { DEFAULT_MIN_STOCK } from '@/features/products/constants';
+import {
+  DEFAULT_MIN_STOCK,
+  DEFAULT_SALE_KIND,
+  SALE_KIND_OPTIONS,
+} from '@/features/products/constants';
 import { QrPreview } from '@/features/products/QrPreview';
-import { PageHeader, Button, ButtonLink, Field, Input, Textarea } from '@/components/ui';
+import { PageHeader, Button, ButtonLink, Field, Input, Textarea, Segmented } from '@/components/ui';
+import type { Enums } from '@/lib/database.types';
 
 export function ProductNewPage() {
   const navigate = useNavigate();
@@ -25,6 +30,7 @@ export function ProductNewPage() {
   const [initialStock, setInitialStock] = useState<string>('0');
   const [price, setPrice] = useState<string>('');
   const [minStock, setMinStock] = useState<string>(String(DEFAULT_MIN_STOCK));
+  const [saleKind, setSaleKind] = useState<Enums<'sale_kind'>>(DEFAULT_SALE_KIND);
   const [group, setGroup] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [created, setCreated] = useState<Product | null>(null);
@@ -72,6 +78,7 @@ export function ProductNewPage() {
         price: priceNum,
         minStock: minStockNum,
         groupId,
+        saleKind,
       });
       setCreated(product);
     } catch {
@@ -88,6 +95,7 @@ export function ProductNewPage() {
     setInitialStock('0');
     setPrice('');
     setMinStock(String(DEFAULT_MIN_STOCK));
+    setSaleKind(DEFAULT_SALE_KIND);
     setGroup('');
     setNewGroupName('');
     createProduct.reset();
@@ -167,6 +175,15 @@ export function ProductNewPage() {
           onNewNameChange={setNewGroupName}
           disabled={createProduct.isPending || createGroup.isPending}
         />
+
+        <Field label="Tipo" hint="Parte las ventas del panel en contratos y piezas.">
+          <Segmented
+            ariaLabel="Tipo de artículo"
+            value={saleKind}
+            onChange={setSaleKind}
+            options={SALE_KIND_OPTIONS}
+          />
+        </Field>
 
         <Field
           label="Precio base (€/ud)"

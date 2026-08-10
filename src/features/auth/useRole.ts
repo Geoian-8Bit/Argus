@@ -2,7 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
-export type Role = 'admin' | 'staff';
+export type Role = 'admin' | 'staff' | 'comercial';
+
+export const ROLES: Role[] = ['admin', 'staff', 'comercial'];
+
+function toRole(value: unknown): Role {
+  return ROLES.includes(value as Role) ? (value as Role) : 'staff';
+}
 
 export function useRole() {
   const { user } = useAuth();
@@ -17,7 +23,8 @@ export function useRole() {
         .eq('id', user!.id)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return data?.role === 'admin' ? 'admin' : 'staff';
+      // Rol desconocido o perfil sin crear: se cae al rol con menos permisos.
+      return toRole(data?.role);
     },
   });
 }

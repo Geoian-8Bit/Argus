@@ -1,17 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Tables } from '@/lib/database.types';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export type Product = Tables<'products'>;
 
 export function useProducts(search = '') {
   const term = search.trim();
+  const { currentId } = useWarehouse();
   return useQuery({
-    queryKey: ['products', 'list', term],
+    // El almacén entra en la clave: cambiar de almacén es cambiar de listado,
+    // no refrescar el mismo.
+    queryKey: ['products', 'list', currentId, term],
+    enabled: !!currentId,
     queryFn: async (): Promise<Product[]> => {
       let query = supabase
         .from('products')
         .select('*')
+        .eq('warehouse_id', currentId!)
         .order('position', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
       if (term) {

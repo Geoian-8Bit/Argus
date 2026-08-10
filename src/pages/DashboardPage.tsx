@@ -295,7 +295,7 @@ function PeriodSales() {
       ) : (
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">Ingresos</p>
+            <p className="text-xs font-medium text-muted-foreground">Venta total</p>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <Wallet className="h-4 w-4" aria-hidden="true" />
             </span>
@@ -327,7 +327,21 @@ function PeriodSales() {
             )}
           </div>
 
+          {/* El reparto sale del tipo de cada artículo (contrato o pieza), así
+              que contratos + piezas siempre suman la venta total. */}
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Venta contratos</p>
+              <p className="mt-0.5 text-lg font-semibold leading-tight">
+                {formatMoney(d?.contractsRevenue ?? 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Venta piezas</p>
+              <p className="mt-0.5 text-lg font-semibold leading-tight">
+                {formatMoney(d?.piecesRevenue ?? 0)}
+              </p>
+            </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Uds vendidas</p>
               <p className="mt-0.5 text-lg font-semibold leading-tight">{d?.unitsSold ?? 0}</p>
@@ -510,6 +524,17 @@ function StaffChecklistView() {
   );
 }
 
+// El comercial ve las ventas de su almacén: venta contratos, venta piezas y
+// venta total. Nada de inventario global ni de revisiones.
+function ComercialSalesView() {
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Ventas" subtitle="Lo vendido en tu almacén, por periodo." />
+      <PeriodSales />
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const role = useRole();
 
@@ -521,5 +546,7 @@ export function DashboardPage() {
     );
   }
 
-  return role.data === 'admin' ? <AdminDashboard /> : <StaffChecklistView />;
+  if (role.data === 'admin') return <AdminDashboard />;
+  if (role.data === 'comercial') return <ComercialSalesView />;
+  return <StaffChecklistView />;
 }

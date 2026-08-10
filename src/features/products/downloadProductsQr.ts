@@ -21,15 +21,17 @@ export async function downloadProductsQrPdf(
 
 /**
  * Genera y descarga un PDF con el QR de todos los productos activos
- * (no archivados), ordenados por código. Devuelve cuántos se exportaron.
- * `onProgress` permite mostrar una barra de progreso durante la generación.
+ * (no archivados) de un almacén, ordenados por código. Devuelve cuántos se
+ * exportaron. `onProgress` permite mostrar una barra de progreso.
  */
 export async function downloadAllProductsQrPdf(
+  warehouseId: string,
   onProgress?: (progress: QrPdfProgress) => void,
 ): Promise<number> {
   const { data, error } = await supabase
     .from('products')
     .select('code')
+    .eq('warehouse_id', warehouseId)
     .is('archived_at', null)
     .order('code', { ascending: true });
   if (error) throw new Error(error.message);

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Tables } from '@/lib/database.types';
+import type { Enums, Tables } from '@/lib/database.types';
+import { useWarehouse } from '@/features/warehouses/useWarehouse';
 
 export interface CreateProductInput {
   code: string;
@@ -14,6 +15,8 @@ export interface CreateProductInput {
   minStock?: number;
   /** Grupo al que pertenece el producto. */
   groupId?: string | null;
+  /** Contrato o pieza: parte las ventas en el panel. */
+  saleKind?: Enums<'sale_kind'>;
 }
 
 export type Product = Tables<'products'>;
@@ -50,6 +53,7 @@ export class ProductCodeConflictError extends Error {
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
+  const { currentId } = useWarehouse();
 
   return useMutation({
     mutationFn: async (input: CreateProductInput): Promise<Product> => {
@@ -73,6 +77,9 @@ export function useCreateProduct() {
       if (minStock < 0) {
         throw new Error('El umbral de stock no puede ser negativo.');
       }
+      if (!currentId) {
+        throw new Error('No hay un almacén seleccionado.');
+      }
 
       const { data: product, error } = await supabase
         .from('products')
@@ -84,17 +91,21 @@ export function useCreateProduct() {
           price,
           min_stock: minStock,
           group_id: input.groupId ?? null,
+          sale_kind: input.saleKind ?? 'pieza',
+          warehouse_id: currentId,
         })
         .select()
         .single();
 
       if (error) {
         if (error.code === '23505') {
-          // El código ya existe. Buscamos el producto (puede estar archivado y
-          // por eso no salir en el listado) para ofrecer restaurarlo.
+          // El código ya existe en este almacén. Buscamos el producto (puede
+          // estar archivado y por eso no salir en el listado) para ofrecer
+          // restaurarlo.
           const { data: existing } = await supabase
             .from('products')
             .select('id, name, archived_at')
+            .eq('warehouse_id', currentId)
             .eq('code', code)
             .maybeSingle();
           throw new ProductCodeConflictError(code, existing ?? null);
@@ -108,6 +119,7 @@ export function useCreateProduct() {
           type: 'in',
           qty: initialStock,
           note: 'Stock inicial',
+          warehouse_id: currentId,
         });
         if (movementError) {
           throw new Error(

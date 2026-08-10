@@ -35,6 +35,8 @@ export function MovementItem({ movement, timeFormat = 'relative' }: MovementItem
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {when} · <span title={movement.user_email ?? undefined}>{author}</span>
+          {/* Solo las salidas de un comercial llevan cliente. */}
+          {movement.customer ? ` · ${movement.customer}` : ''}
         </p>
       </div>
       <span

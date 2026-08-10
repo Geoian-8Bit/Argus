@@ -58,6 +58,9 @@ function ActionCard({ to, tone, icon: Icon, title, subtitle }: ActionCardProps) 
 export function HomePage() {
   const role = useRole();
   const isAdmin = role.data === 'admin';
+  // El comercial trabaja sin QR: sus accesos llevan al alta manual.
+  const isComercial = role.data === 'comercial';
+  const movePath = isComercial ? '/movement' : '/scan';
   const stats = useDashboardStats();
   const recent = useMovements({ limit: 5 });
   const lowStock = stats.data?.lowStock ?? 0;
@@ -72,20 +75,22 @@ export function HomePage() {
         <p className="text-sm text-muted-foreground">
           {isAdmin
             ? 'Escanea el código de un producto para registrar entradas y salidas. Aquí tienes el resumen del inventario y los últimos movimientos.'
-            : 'Escanea el código de un producto para registrar una entrada o una salida de stock.'}
+            : isComercial
+              ? 'Elige el producto de tu almacén y registra la entrada o la salida, con su cliente.'
+              : 'Escanea el código de un producto para registrar una entrada o una salida de stock.'}
         </p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
         <ActionCard
-          to="/scan?action=in"
+          to={`${movePath}?action=in`}
           tone="in"
           icon={ArrowDownToLine}
           title="Añadir"
           subtitle="Entrada de stock"
         />
         <ActionCard
-          to="/scan?action=out"
+          to={`${movePath}?action=out`}
           tone="out"
           icon={ArrowUpFromLine}
           title="Retirar"
