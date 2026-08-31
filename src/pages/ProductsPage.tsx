@@ -24,6 +24,7 @@ import {
   SortableGroupSections,
   type GroupSection,
 } from '@/features/products/SortableGroupSections';
+import { buildGroupSections } from '@/features/products/groupSections';
 import {
   loadProductsListState,
   saveProductsListState,
@@ -47,9 +48,6 @@ import {
   type SegmentedOption,
   ProgressModal,
 } from '@/components/ui';
-
-/** Clave del pseudogrupo que agrupa los productos sin grupo asignado. */
-const UNGROUPED = 'ungrouped';
 
 const VIEWS: SegmentedOption<ProductsView>[] = [
   { value: 'groups', label: 'Grupos' },
@@ -248,31 +246,12 @@ export function ProductsPage() {
   const totalUnits = list.reduce((sum, p) => sum + p.stock, 0);
   const totalValue = list.reduce((sum, p) => sum + p.stock * p.price, 0);
 
-  const sections = useMemo<GroupSection[]>(() => {
-    const byGroup = new Map<string, Product[]>();
-    for (const p of list) {
-      const key = p.group_id ?? UNGROUPED;
-      const bucket = byGroup.get(key);
-      if (bucket) bucket.push(p);
-      else byGroup.set(key, [p]);
-    }
-    const groups = groupsQuery.data ?? [];
-    const known = new Set(groups.map((g) => g.id));
-    // Sin búsqueda se muestran también los grupos vacíos (para poder editarlos);
-    // buscando, solo los grupos con resultados.
-    const result: GroupSection[] = groups
-      .filter((g) => (isSearching ? byGroup.has(g.id) : true))
-      .map((g) => ({ key: g.id, name: g.name, group: g, products: byGroup.get(g.id) ?? [] }));
-    // Los productos sin grupo (o con un grupo ya inexistente) van al final.
-    const ungrouped = [...(byGroup.get(UNGROUPED) ?? [])];
-    for (const [key, prods] of byGroup) {
-      if (key !== UNGROUPED && !known.has(key)) ungrouped.push(...prods);
-    }
-    if (ungrouped.length > 0) {
-      result.push({ key: UNGROUPED, name: 'Sin grupo', products: ungrouped });
-    }
-    return result;
-  }, [list, groupsQuery.data, isSearching]);
+  // Sin búsqueda se muestran también los grupos vacíos (para poder editarlos);
+  // buscando, solo los grupos con resultados.
+  const sections = useMemo<GroupSection[]>(
+    () => buildGroupSections(list, groupsQuery.data ?? [], { includeEmpty: !isSearching }),
+    [list, groupsQuery.data, isSearching],
+  );
 
   function toggleGroup(key: string) {
     setExpanded((prev) => {
