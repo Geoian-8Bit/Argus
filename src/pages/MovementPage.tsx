@@ -1,11 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, PackageX, Search } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle2,
+  ChevronDown,
+  Folder,
+  PackageX,
+  Search,
+} from 'lucide-react';
 import { useProducts, type Product } from '@/features/products/useProducts';
+import { useProductGroups } from '@/features/products/useProductGroups';
+import { buildGroupSections } from '@/features/products/groupSections';
 import { useRegisterMovement } from '@/features/movements/useRegisterMovement';
 import { INACTIVE_STOCK } from '@/features/products/constants';
 import { useRole } from '@/features/auth/useRole';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
+import { cn } from '@/lib/utils';
 import {
   PageHeader,
   Card,
@@ -45,8 +56,12 @@ export function MovementPage() {
   const [note, setNote] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Grupos abiertos del selector; buscando salen todos abiertos.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+
   const debouncedSearch = useDebouncedValue(search, 250);
   const products = useProducts(debouncedSearch);
+  const groupsQuery = useProductGroups();
   const registerMovement = useRegisterMovement();
   const role = useRole();
   // El staff no maneja precios; admin y comercial sí (la venta es suya).
@@ -68,9 +83,28 @@ export function MovementPage() {
   const canConfirm = !!selected && !isInactive && qtyValid && (!showPriceField || priceValid);
 
   // Los desactivados y los archivados no admiten movimientos: no se ofrecen.
-  const selectable = (products.data ?? []).filter(
-    (p) => !p.archived_at && p.stock !== INACTIVE_STOCK,
+  const selectable = useMemo(
+    () => (products.data ?? []).filter((p) => !p.archived_at && p.stock !== INACTIVE_STOCK),
+    [products.data],
   );
+
+  const isSearching = debouncedSearch.trim().length > 0;
+  // Mismo reparto en carpetas que el listado de Productos, para que el comercial
+  // busque donde ya sabe. Aquí los grupos vacíos no aportan nada: no se muestran.
+  const sections = useMemo(
+    () => buildGroupSections(selectable, groupsQuery.data ?? [], { includeEmpty: false }),
+    [selectable, groupsQuery.data],
+  );
+  const listLoading = products.isLoading || groupsQuery.isLoading;
+
+  function toggleGroup(key: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   function reset() {
     setSelected(null);
@@ -234,37 +268,79 @@ export function MovementPage() {
             </div>
           </Field>
 
-          {products.isLoading ? (
+          {listLoading ? (
             <Card className="space-y-3 p-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </Card>
-          ) : selectable.length > 0 ? (
-            <Card>
-              <ul className="divide-y divide-border px-4">
-                {selectable.map((p) => (
-                  <li key={p.id}>
+          ) : sections.length > 0 ? (
+            <div className="space-y-3">
+              {sections.map((section) => {
+                const isOpen = isSearching || openGroups.has(section.key);
+                const units = section.products.reduce((sum, p) => sum + p.stock, 0);
+                return (
+                  <Card key={section.key}>
                     <button
                       type="button"
+                      aria-expanded={isOpen}
                       onClick={() => {
-                        setSelected(p);
-                        setSuccessMessage(null);
+                        if (!isSearching) toggleGroup(section.key);
                       }}
-                      className="flex w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                        isOpen && 'rounded-b-none',
+                      )}
                     >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{p.name}</span>
-                        <span className="block truncate font-mono text-xs text-muted-foreground">
-                          {p.code}
-                          {p.variant ? ` · ${p.variant}` : ''}
+                      <Folder
+                        className="h-4 w-4 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{section.name}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {section.products.length}{' '}
+                          {section.products.length === 1 ? 'producto' : 'productos'} ·{' '}
+                          <span className="tabular-nums">{units}</span> uds
                         </span>
                       </span>
-                      <StockBadge stock={p.stock} minStock={p.min_stock} />
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out',
+                          isOpen && 'rotate-180',
+                        )}
+                        aria-hidden="true"
+                      />
                     </button>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+
+                    {isOpen && (
+                      <ul className="divide-y divide-border border-t border-border px-4">
+                        {section.products.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelected(p);
+                                setSuccessMessage(null);
+                              }}
+                              className="flex w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium">{p.name}</span>
+                                <span className="block truncate font-mono text-xs text-muted-foreground">
+                                  {p.code}
+                                  {p.variant ? ` · ${p.variant}` : ''}
+                                </span>
+                              </span>
+                              <StockBadge stock={p.stock} minStock={p.min_stock} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
           ) : (
             <EmptyState
               icon={PackageX}

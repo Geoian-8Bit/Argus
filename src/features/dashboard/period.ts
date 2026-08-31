@@ -18,6 +18,11 @@ export const GRANULARITIES: { value: Granularity; label: string }[] = [
 
 const dayMonthFmt = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' });
 const monthYearFmt = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric' });
+const weekdayFmt = new Intl.DateTimeFormat('es', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -27,6 +32,14 @@ function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
+}
+
+/** El día de hoy, de 00:00 a 00:00 del día siguiente. */
+export function todayRange(): Period {
+  const start = startOfDay(new Date());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  return { start, end, label: capitalize(weekdayFmt.format(start)) };
 }
 
 // Calcula el rango de un periodo relativo a hoy. offset 0 = actual, -1 = anterior, etc.

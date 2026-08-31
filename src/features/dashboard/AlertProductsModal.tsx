@@ -6,13 +6,18 @@ import { Spinner, StockBadge } from '@/components/ui';
 
 interface AlertProductsModalProps {
   onClose: () => void;
+  /**
+   * La ficha de producto es solo de admin: para los demás roles las filas se
+   * pintan sin enlace (si no, el enlace acabaría en una redirección).
+   */
+  linkToDetail?: boolean;
 }
 
 /**
  * Modal que lista, uno a uno, los productos sin stock o por debajo de su
  * umbral (los mismos que cuenta la tarjeta "Quedan pocos" de Inicio).
  */
-export function AlertProductsModal({ onClose }: AlertProductsModalProps) {
+export function AlertProductsModal({ onClose, linkToDetail = true }: AlertProductsModalProps) {
   const alerts = useAlertProducts();
 
   useEffect(() => {
@@ -79,10 +84,20 @@ export function AlertProductsModal({ onClose }: AlertProductsModalProps) {
           ) : (
             <>
               {out.length > 0 && (
-                <AlertGroup title="Sin stock" products={out} onNavigate={onClose} />
+                <AlertGroup
+                  title="Sin stock"
+                  products={out}
+                  onNavigate={onClose}
+                  linkToDetail={linkToDetail}
+                />
               )}
               {low.length > 0 && (
-                <AlertGroup title="Quedan pocos" products={low} onNavigate={onClose} />
+                <AlertGroup
+                  title="Quedan pocos"
+                  products={low}
+                  onNavigate={onClose}
+                  linkToDetail={linkToDetail}
+                />
               )}
             </>
           )}
@@ -96,10 +111,12 @@ function AlertGroup({
   title,
   products,
   onNavigate,
+  linkToDetail,
 }: {
   title: string;
   products: ReturnType<typeof useAlertProducts>['data'];
   onNavigate: () => void;
+  linkToDetail: boolean;
 }) {
   return (
     <div>
@@ -107,13 +124,9 @@ function AlertGroup({
         {title} <span className="tabular-nums">({(products ?? []).length})</span>
       </p>
       <ul className="divide-y divide-border border-t border-border">
-        {(products ?? []).map((p) => (
-          <li key={p.id}>
-            <Link
-              to={`/products/${p.id}`}
-              onClick={onNavigate}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            >
+        {(products ?? []).map((p) => {
+          const row = (
+            <>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
                   {p.name}
@@ -122,9 +135,24 @@ function AlertGroup({
                 <p className="truncate font-mono text-xs text-muted-foreground">{p.code}</p>
               </div>
               <StockBadge stock={p.stock ?? 0} minStock={p.min_stock ?? undefined} />
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+          return (
+            <li key={p.id}>
+              {linkToDetail ? (
+                <Link
+                  to={`/products/${p.id}`}
+                  onClick={onNavigate}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3 px-4 py-3">{row}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

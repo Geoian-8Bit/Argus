@@ -10,6 +10,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { Product } from './useProducts';
 import type { ProductGroup } from './useProductGroups';
+import type { GroupSectionOf } from './groupSections';
 import { SortableProductList } from './SortableProductList';
 import { useReorderGroups } from './useReorderGroups';
 import { ascendingPositions, changedPositions, useReorderSensors } from './reorder';
@@ -17,13 +18,7 @@ import { Card } from '@/components/ui';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export interface GroupSection {
-  key: string;
-  name: string;
-  /** Grupo real (ausente en "Sin grupo"), para poder editarlo y arrastrarlo. */
-  group?: ProductGroup;
-  products: Product[];
-}
+export type GroupSection = GroupSectionOf<Product, ProductGroup>;
 
 interface SortableGroupSectionsProps {
   sections: GroupSection[];
